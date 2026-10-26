@@ -19,6 +19,9 @@ function parseTime(h, m, s) {
   return Number(h) * 3600 + Number(m) * 60 + Number(s);
 }
 
+// Los errores se devuelven como { code, detail }: la interfaz los traduce al idioma elegido.
+const fail = (code, detail) => ({ ok: false, error: { code, detail } });
+
 // ffmpeg -i sin salida imprime la información del archivo en stderr y termina.
 function probe(file) {
   return new Promise((resolve) => {
@@ -26,13 +29,13 @@ function probe(file) {
     try {
       stat = fs.statSync(file);
     } catch {
-      return resolve({ path: file, error: 'No se encontró el archivo.' });
+      return resolve({ path: file, error: { code: 'NOT_FOUND' } });
     }
 
     const proc = run(['-hide_banner', '-i', file]);
     let err = '';
     proc.stderr.on('data', (d) => { err += d; });
-    proc.on('error', (e) => resolve({ path: file, error: e.message }));
+    proc.on('error', (e) => resolve({ path: file, error: { code: 'FFMPEG', detail: e.message } }));
     proc.on('close', () => {
       const info = { path: file, size: stat.size, duration: 0, hasVideo: false, hasAudio: false, vcodec: null, acodec: null };
       // URL para miniaturas; realpath expande rutas cortas de Windows (DAVIDC~1) que Chromium no carga.
@@ -58,15 +61,25 @@ function probe(file) {
         }
       }
 
-      if (!info.hasVideo && !info.hasAudio) info.error = 'No es un archivo de audio o video válido.';
+      if (!info.hasVideo && !info.hasAudio) info.error = { code: 'INVALID_MEDIA' };
       resolve(info);
     });
   });
 }
 
-function uniqueOutput(dir, base, ext) {
-  let out = path.join(dir, `${base}.${ext}`);
-  for (let n = 1; fs.existsSync(out) || [...running.values()].some((r) => r.output === out); n++) {
+const samePath = (a, b) => (process.platform === 'win32' || process.platform === 'darwin'
+  ? path.resolve(a).toLowerCase() === path.resolve(b).toLowerCase()
+  : path.resolve(a) === path.resolve(b));
+
+const reserved = (file) => [...running.values()].some((r) => samePath(r.output, file));
+
+// Nombre final. Con overwrite se reutiliza el nombre aunque exista, salvo que sea el propio
+// archivo de entrada (ffmpeg no puede leer y escribir el mismo archivo) u otra conversión en curso.
+function outputPath(dir, base, ext, input, overwrite) {
+  const first = path.join(dir, `${base}.${ext}`);
+  if (overwrite && !samePath(first, input) && !reserved(first)) return first;
+  let out = first;
+  for (let n = 1; fs.existsSync(out) || reserved(out) || samePath(out, input); n++) {
     out = path.join(dir, `${base} (${n}).${ext}`);
   }
   return out;
@@ -78,34 +91,38 @@ function safeUnlink(file) {
 
 function lastErrorLine(stderr) {
   const lines = stderr.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
-  return lines[lines.length - 1] || 'ffmpeg terminó con un error.';
+  return lines[lines.length - 1] || '';
 }
 
-async function convert(job, onProgress) {
+async function convert(job, onProgress, { overwrite = false } = {}) {
   const invalid = validateJob(job);
-  if (invalid) return { ok: false, error: invalid };
+  if (invalid) return fail(invalid);
 
   const info = await probe(job.input);
   if (info.error) return { ok: false, error: info.error };
   const needsVideo = job.kind === 'video' || job.kind === 'image';
-  if (needsVideo && !info.hasVideo) return { ok: false, error: job.kind === 'image' ? 'No es una imagen válida.' : 'El archivo no contiene video.' };
-  if (!needsVideo && !info.hasAudio) return { ok: false, error: 'El archivo no contiene audio.' };
+  if (needsVideo && !info.hasVideo) return fail(job.kind === 'image' ? 'NOT_IMAGE' : 'NO_VIDEO');
+  if (!needsVideo && !info.hasAudio) return fail('NO_AUDIO');
 
   const outDir = job.outputDir || path.dirname(job.input);
   try {
     fs.mkdirSync(outDir, { recursive: true });
   } catch (e) {
-    return { ok: false, error: `No se puede escribir en la carpeta de destino: ${e.message}` };
+    return fail('OUTPUT_DIR', e.message);
   }
+  const ext = outputExt(job);
   const base = path.basename(job.input, path.extname(job.input));
-  const output = uniqueOutput(outDir, base, outputExt(job));
+  const output = outputPath(outDir, base, ext, job.input, overwrite);
+  // Se escribe en un temporal con la misma extensión (ffmpeg elige el formato por ella) y se
+  // renombra al terminar: un fallo nunca deja un archivo a medias ni pisa uno existente.
+  const temp = path.join(outDir, `.${base}.${job.id}.part.${ext}`);
   const total = outputDuration(job, info.duration);
 
   const args = [
     '-hide_banner', '-y', '-i', job.input,
     ...buildArgs(job, info),
     '-progress', 'pipe:1', '-nostats',
-    output,
+    temp,
   ];
 
   return new Promise((resolve) => {
@@ -141,25 +158,48 @@ async function convert(job, onProgress) {
 
     proc.on('error', (e) => {
       running.delete(job.id);
-      resolve({ ok: false, error: e.message });
+      safeUnlink(temp);
+      resolve(fail('FFMPEG', e.message));
     });
 
     proc.on('close', (code) => {
       running.delete(job.id);
       if (entry.canceled) {
-        safeUnlink(output);
+        safeUnlink(temp);
         resolve({ ok: false, canceled: true });
       } else if (code === 0) {
+        try {
+          fs.renameSync(temp, output);
+        } catch (e) {
+          // Típico en Windows si el archivo a reemplazar está abierto en otro programa.
+          safeUnlink(temp);
+          resolve(fail('OUTPUT_LOCKED', e.message));
+          return;
+        }
         let size = 0;
         try { size = fs.statSync(output).size; } catch { /* sin tamaño */ }
         onProgress({ id: job.id, percent: 100, eta: 0 });
         resolve({ ok: true, output, size });
       } else {
-        safeUnlink(output);
-        resolve({ ok: false, error: lastErrorLine(stderr) });
+        safeUnlink(temp);
+        resolve(fail('FFMPEG', lastErrorLine(stderr)));
       }
     });
   });
+}
+
+// Versión del ffmpeg incluido, para la sección "Acerca de".
+let versionCache = null;
+function version() {
+  if (versionCache) return versionCache;
+  versionCache = new Promise((resolve) => {
+    const proc = run(['-version']);
+    let out = '';
+    proc.stdout.on('data', (d) => { out += d; });
+    proc.on('error', () => resolve(''));
+    proc.on('close', () => resolve(/ffmpeg version (\S+)/.exec(out)?.[1]?.replace(/-.*$/, '') || ''));
+  });
+  return versionCache;
 }
 
 function cancel(id) {
@@ -174,4 +214,4 @@ function cancelAll() {
   for (const id of running.keys()) cancel(id);
 }
 
-module.exports = { probe, convert, cancel, cancelAll };
+module.exports = { probe, convert, cancel, cancelAll, version };

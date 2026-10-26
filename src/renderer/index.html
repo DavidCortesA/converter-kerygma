@@ -20,31 +20,35 @@
       </div>
     </div>
 
-    <nav class="tabs" role="tablist" aria-label="Tipo de conversión">
+    <nav class="tabs" role="tablist">
       <span class="tab-indicator" aria-hidden="true"></span>
       <button class="tab" role="tab" data-tab="video" aria-selected="true">
         <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="13" height="12" rx="2.5"/><path d="m16 10.5 5-3v9l-5-3"/></svg>
-        <span>Video</span>
+        <span data-i18n="tab.video">Video</span>
         <i class="tab-badge" hidden></i>
       </button>
       <button class="tab" role="tab" data-tab="audio" aria-selected="false">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18V6l11-2v12"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="17.5" cy="16" r="2.5"/></svg>
-        <span>Audio</span>
+        <span data-i18n="tab.audio">Audio</span>
         <i class="tab-badge" hidden></i>
       </button>
       <button class="tab" role="tab" data-tab="extract" aria-selected="false">
         <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="6" width="9" height="12" rx="2"/><path d="M14 12h3m0 0-1.5-1.5M17 12l-1.5 1.5"/><path d="M20 9v6"/></svg>
-        <span>Video → Audio</span>
+        <span data-i18n="tab.extract">Video → Audio</span>
         <i class="tab-badge" hidden></i>
       </button>
       <button class="tab" role="tab" data-tab="image" aria-selected="false">
         <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4.5" width="18" height="15" rx="2.5"/><circle cx="9" cy="10" r="1.8"/><path d="m21 15.5-4.6-4.6a1.5 1.5 0 0 0-2.1 0L5 19.5"/></svg>
-        <span>Foto</span>
+        <span data-i18n="tab.image">Foto</span>
         <i class="tab-badge" hidden></i>
       </button>
     </nav>
 
-    <div class="titlebar-end"></div>
+    <div class="titlebar-end">
+      <button type="button" class="titlebar-btn" data-act="open-prefs">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+      </button>
+    </div>
   </header>
 
   <main id="view"></main>
@@ -52,13 +56,16 @@
   <div class="drop-overlay" aria-hidden="true">
     <div class="drop-overlay-inner">
       <svg viewBox="0 0 24 24"><path d="M12 15V4m0 0-4 4m4-4 4 4"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>
-      <strong>Suelta para añadir</strong>
+      <strong data-i18n="drop.title">Suelta para añadir</strong>
       <span class="drop-overlay-target"></span>
     </div>
   </div>
 
+  <div id="prefs" class="prefs" hidden></div>
+
   <div id="toasts" aria-live="polite"></div>
 
+  <script src="i18n.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

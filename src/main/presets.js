@@ -191,10 +191,9 @@ function outputDuration(job, duration) {
 }
 
 function validateJob(job) {
-  if (!job || typeof job.input !== 'string') return 'Archivo de entrada inválido.';
-  if (!ACCEPT[job.kind]) return 'Tipo de conversión desconocido.';
+  if (!job || typeof job.input !== 'string' || !ACCEPT[job.kind]) return 'INVALID_JOB';
   const formats = { video: VIDEO_FORMATS, image: IMAGE_FORMATS }[job.kind] ?? AUDIO_FORMATS;
-  if (!Object.hasOwn(formats, job.format)) return 'Formato de salida no soportado.';
+  if (!Object.hasOwn(formats, job.format)) return 'UNSUPPORTED_FORMAT';
   return null;
 }
 

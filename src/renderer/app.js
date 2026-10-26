@@ -3,89 +3,102 @@
 const api = window.kerygma;
 
 /* ---------- Configuración de pestañas ---------- */
+// Los textos viven en i18n.js; aquí solo hay datos. fmtGroup elige las descripciones (fmt.<grupo>.<id>).
 
 const AUDIO_FORMATS = [
-  { id: 'mp3', label: 'MP3', lossy: true, desc: 'El formato de audio universal: funciona en cualquier reproductor, auto o celular.' },
-  { id: 'm4a', label: 'M4A', lossy: true, desc: 'AAC en contenedor MP4. Mejor calidad que MP3 al mismo tamaño; ideal para Apple.' },
-  { id: 'aac', label: 'AAC', lossy: true, desc: 'AAC sin contenedor. Para radios por internet y algunos equipos de audio.' },
-  { id: 'wav', label: 'WAV', lossy: false, desc: 'Sin compresión. Para edición de audio y CDs; los archivos son grandes.' },
-  { id: 'flac', label: 'FLAC', lossy: false, desc: 'Sin pérdida y bastante más liviano que WAV. Ideal para archivar música.' },
-  { id: 'alac', label: 'ALAC', lossy: false, desc: 'Sin pérdida de Apple (se guarda como .m4a). Para la app Música e iTunes.' },
-  { id: 'aiff', label: 'AIFF', lossy: false, desc: 'Sin compresión, el equivalente a WAV en Mac. Para Logic y GarageBand.' },
-  { id: 'ogg', label: 'OGG', lossy: true, desc: 'Vorbis: libre y liviano. Usado en videojuegos y Linux.' },
-  { id: 'opus', label: 'OPUS', lossy: true, desc: 'El más eficiente: excelente para voz incluso a 128 kbps. Siempre a 48 kHz.' },
-  { id: 'wma', label: 'WMA', lossy: true, desc: 'Windows Media Audio. Para equipos y programas Windows antiguos.' },
-  { id: 'ac3', label: 'AC3', lossy: true, desc: 'Dolby Digital. Para DVD y sistemas de cine en casa.' },
-  { id: 'm4r', label: 'M4R', lossy: true, desc: 'Tono de llamada para iPhone. Se recorta a los primeros 40 segundos.' },
+  { id: 'mp3', label: 'MP3', lossy: true },
+  { id: 'm4a', label: 'M4A', lossy: true },
+  { id: 'aac', label: 'AAC', lossy: true },
+  { id: 'wav', label: 'WAV', lossy: false },
+  { id: 'flac', label: 'FLAC', lossy: false },
+  { id: 'alac', label: 'ALAC', lossy: false },
+  { id: 'aiff', label: 'AIFF', lossy: false },
+  { id: 'ogg', label: 'OGG', lossy: true },
+  { id: 'opus', label: 'OPUS', lossy: true },
+  { id: 'wma', label: 'WMA', lossy: true },
+  { id: 'ac3', label: 'AC3', lossy: true },
+  { id: 'm4r', label: 'M4R', lossy: true },
 ];
 
 const AUDIO_DEFAULTS = { format: 'mp3', bitrate: '192', channels: 'original', rate: 'original', normalize: 'off', dest: 'same' };
 
 const TABS = {
   video: {
-    label: 'Video',
-    title: 'Convertir video',
-    subtitle: 'Convierte tus videos a cualquier formato común.',
-    noun: 'videos',
     needs: 'video',
-    compact: true,
-    formats: [
-      { id: 'mp4', label: 'MP4', desc: 'H.264 + AAC. Se reproduce en todo: celulares, web, TV y redes sociales.' },
-      { id: 'mov', label: 'MOV', desc: 'Formato de Apple. Ideal para QuickTime, iMovie y Final Cut.' },
-      { id: 'mkv', label: 'MKV', desc: 'Contenedor flexible: en modo rápido conserva cualquier códec sin recodificar.' },
-      { id: 'webm', label: 'WEBM', desc: 'VP9 + Opus. Pensado para páginas web; codificar tarda un poco más.' },
-      { id: 'avi', label: 'AVI', desc: 'MPEG-4 (Xvid) + MP3. Para reproductores y programas antiguos.' },
-      { id: 'm4v', label: 'M4V', desc: 'Variante de MP4 para iTunes, Apple TV y dispositivos Apple.' },
-      { id: 'wmv', label: 'WMV', desc: 'Windows Media. Para PowerPoint y equipos Windows antiguos.' },
-      { id: 'mpg', label: 'MPG', desc: 'MPEG-2. Para DVD y reproductores de mesa.' },
-      { id: 'ts', label: 'TS', desc: 'MPEG-TS. Para transmisiones en vivo, IPTV y algunos decodificadores.' },
-      { id: 'flv', label: 'FLV', desc: 'Flash Video. Solo para plataformas que todavía lo piden.' },
-      { id: '3gp', label: '3GP', desc: 'Para celulares básicos; archivos pequeños.' },
-      { id: 'gif', label: 'GIF', desc: 'Animación sin audio. La calidad define la fluidez (20, 15 o 10 cuadros por segundo).' },
-    ],
+    fmtGroup: 'video',
+    formats: ['mp4', 'mov', 'mkv', 'webm', 'avi', 'm4v', 'wmv', 'mpg', 'ts', 'flv', '3gp', 'gif']
+      .map((id) => ({ id, label: id.toUpperCase() })),
     defaults: { format: 'mp4', mode: 'fast', quality: 'alta', resolution: 'original', dest: 'same' },
   },
   audio: {
-    label: 'Audio',
-    title: 'Convertir audio',
-    subtitle: 'Pasa tus audios al formato que necesites.',
-    noun: 'audios',
     needs: 'audio',
-    compact: true,
+    fmtGroup: 'audio',
     formats: AUDIO_FORMATS,
     defaults: AUDIO_DEFAULTS,
   },
   extract: {
-    label: 'Video → Audio',
-    title: 'Extraer audio de video',
-    subtitle: 'Saca la pista de audio de tus videos: mensajes, podcasts, música.',
-    noun: 'videos',
     needs: 'audio',
-    compact: true,
+    fmtGroup: 'audio',
     formats: AUDIO_FORMATS,
     defaults: AUDIO_DEFAULTS,
   },
   image: {
-    label: 'Foto',
-    title: 'Convertir fotos',
-    subtitle: 'Cambia el formato y el tamaño de tus imágenes.',
-    noun: 'fotos',
-    pick: 'elegirlas',
     needs: 'video',
-    compact: true,
+    fmtGroup: 'image',
     formats: [
-      { id: 'jpg', label: 'JPG', lossy: true, desc: 'El formato de foto universal. Sin transparencia: el fondo transparente pasa a blanco.' },
-      { id: 'png', label: 'PNG', lossy: false, desc: 'Sin pérdida y con transparencia. Ideal para logos, capturas y gráficos.' },
-      { id: 'webp', label: 'WEBP', lossy: true, desc: 'Mucho más liviano que JPG con la misma calidad, y admite transparencia. Ideal para web.' },
-      { id: 'avif', label: 'AVIF', lossy: true, desc: 'El formato más liviano. Compatible con navegadores modernos; codificar tarda un poco más.' },
-      { id: 'tiff', label: 'TIFF', lossy: false, desc: 'Sin pérdida, para imprenta, escaneos y edición profesional.' },
-      { id: 'bmp', label: 'BMP', lossy: false, desc: 'Mapa de bits sin compresión. Solo para programas antiguos; los archivos son grandes.' },
-      { id: 'gif', label: 'GIF', lossy: false, desc: 'Máximo 256 colores. Para gráficos simples; para fotos conviene JPG o WEBP.' },
-      { id: 'ico', label: 'ICO', lossy: false, desc: 'Ícono de Windows y favicon de sitios web. Se reduce a un máximo de 256 px.' },
+      { id: 'jpg', label: 'JPG', lossy: true },
+      { id: 'png', label: 'PNG', lossy: false },
+      { id: 'webp', label: 'WEBP', lossy: true },
+      { id: 'avif', label: 'AVIF', lossy: true },
+      { id: 'tiff', label: 'TIFF', lossy: false },
+      { id: 'bmp', label: 'BMP', lossy: false },
+      { id: 'gif', label: 'GIF', lossy: false },
+      { id: 'ico', label: 'ICO', lossy: false },
     ],
     defaults: { format: 'jpg', quality: 'alta', size: 'original', dest: 'same' },
   },
 };
+
+// Valores posibles de cada opción (sirven para pintar los botones y validar lo guardado).
+const OPTIONS = {
+  mode: ['fast', 'compat'],
+  quality: ['alta', 'media', 'baja'],
+  resolution: ['original', '1080', '720', '480'],
+  bitrate: ['128', '192', '256', '320'],
+  normalize: ['off', 'on'],
+  channels: ['original', '2', '1'],
+  rate: ['original', '44100', '48000'],
+  size: ['original', '3840', '1920', '1280', '800'],
+  dest: ['same', 'custom'],
+};
+
+function optionLabel(setting, value) {
+  if (value === 'original') return t('o.original');
+  switch (setting) {
+    case 'mode':
+    case 'quality': return t(`o.${value}`);
+    case 'resolution': return `${value}p`;
+    case 'normalize': return value === 'on' ? t('o.normalizeOn') : t('o.no');
+    case 'channels': return value === '2' ? t('o.stereo') : t('o.mono');
+    case 'rate': return `${Number(value) / 1000} kHz`;
+    case 'size': return value === '3840' ? '4K' : value;
+    case 'dest': return t(`o.${value}`);
+    default: return value;
+  }
+}
+
+// Opciones de la ventana de Configuración.
+const PREF_OPTIONS = {
+  theme: ['system', 'light', 'dark'],
+  language: ['system', 'es', 'en'],
+  existing: ['copy', 'overwrite'],
+};
+const PREF_SWITCHES = ['remember', 'notify', 'openFolder'];
+
+function prefLabel(pref, value) {
+  if (pref === 'language' && value !== 'system') return LANGUAGE_NAMES[value];
+  return t(`p.${pref}.${value}`);
+}
 
 const ICON = {
   upload: '<svg viewBox="0 0 24 24"><path d="M12 15V4m0 0-4 4m4-4 4 4"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>',
@@ -97,6 +110,8 @@ const ICON = {
   warn: '<svg viewBox="0 0 24 24"><path d="M12 9v4m0 3.5v.01"/><path d="M10.3 4.3 2.6 17.6A2 2 0 0 0 4.3 20.6h15.4a2 2 0 0 0 1.7-3L13.7 4.3a2 2 0 0 0-3.4 0z"/></svg>',
   error: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5m0 3.5v.01"/></svg>',
   info: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.5m0-9v.01"/></svg>',
+  github: '<svg viewBox="0 0 24 24"><path d="M9 19c-4.3 1.4-4.3-2.5-6-3m12 5v-3.5c0-1 .1-1.4-.5-2 2.8-.3 5.5-1.4 5.5-6a4.6 4.6 0 0 0-1.3-3.2 4.2 4.2 0 0 0-.1-3.2s-1.1-.3-3.5 1.3a12.3 12.3 0 0 0-6.2 0C6.5 2.8 5.4 3.1 5.4 3.1a4.2 4.2 0 0 0-.1 3.2A4.6 4.6 0 0 0 4 9.5c0 4.6 2.7 5.7 5.5 6-.6.6-.6 1.2-.5 2V21"/></svg>',
+  reset: '<svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>',
 };
 
 /* ---------- Estado ---------- */
@@ -104,6 +119,8 @@ const ICON = {
 const state = {
   active: 'video',
   accept: {},
+  platform: '',
+  prefs: null,
   tabs: {},
 };
 
@@ -157,15 +174,22 @@ function fmtEta(sec) {
   return `≈ ${Math.round(sec / 60)} min`;
 }
 
-const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+// Los errores llegan como { code, detail } y se traducen al mostrarlos (cambian si cambia el idioma).
+function errorText(err) {
+  if (!err) return t('e.FFMPEG_EMPTY');
+  if (typeof err === 'string') return err;
+  if (err.code === 'FFMPEG' && !err.detail) return t('e.FFMPEG_EMPTY');
+  return t(`e.${err.code}`, { detail: err.detail ?? '' });
+}
 
 const isConvertible = (item) => ['pending', 'canceled', 'error'].includes(item.status);
+const shortcut = (key) => `${state.platform === 'darwin' ? '⌘' : 'Ctrl+'}${key}`;
 
 /* ---------- Plantillas ---------- */
 
-function segTemplate(setting, options) {
+function segTemplate(setting) {
   return `<div class="seg" data-setting="${setting}" role="radiogroup">
-    ${options.map(([value, label]) => `<button type="button" role="radio" data-value="${value}">${label}</button>`).join('')}
+    ${OPTIONS[setting].map((v) => `<button type="button" role="radio" data-value="${v}">${esc(optionLabel(setting, v))}</button>`).join('')}
   </div>`;
 }
 
@@ -173,7 +197,7 @@ function segTemplate(setting, options) {
 function moreTemplate(inner) {
   return `<details class="more">
     <summary>
-      <span class="group-label">Más opciones</span>
+      <span class="group-label">${t('g.more')}</span>
       <span class="more-summary"></span>
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
     </summary>
@@ -181,83 +205,38 @@ function moreTemplate(inner) {
   </details>`;
 }
 
+const group = (label, body, attrs = '') => `
+  <div class="group" ${attrs}>
+    <div class="group-label">${label}</div>
+    ${body}
+  </div>`;
+
 function settingsTemplate(key, cfg) {
-  const cols = cfg.compact ? 'cols-4 is-compact' : 'cols-3';
-  const formatGroup = `
-    <div class="group">
-      <div class="group-label">Formato de salida</div>
-      <div class="chips ${cols}" data-setting="format" role="radiogroup">
-        ${cfg.formats.map((f) => `
-          <button type="button" class="chip" role="radio" data-value="${f.id}">
-            <strong>${f.label}</strong>${f.hint ? `<span>${f.hint}</span>` : ''}
-          </button>`).join('')}
-      </div>
-      ${cfg.compact ? '<p class="group-hint" data-hint="format"></p>' : ''}
-    </div>`;
-
-  const videoGroups = `
-    <div class="group" data-group="mode">
-      <div class="group-label">Modo</div>
-      ${segTemplate('mode', [['fast', 'Rápido'], ['compat', 'Máxima compatibilidad']])}
-      <p class="group-hint" data-hint="mode"></p>
+  const formatGroup = group(t('g.format'), `
+    <div class="chips cols-4 is-compact" data-setting="format" role="radiogroup">
+      ${cfg.formats.map((f) => `<button type="button" class="chip" role="radio" data-value="${f.id}"><strong>${f.label}</strong></button>`).join('')}
     </div>
-    <div class="group">
-      <div class="group-label">Calidad</div>
-      ${segTemplate('quality', [['alta', 'Alta'], ['media', 'Media'], ['baja', 'Ligera']])}
-    </div>
-    ${moreTemplate(`
-      <div class="group">
-        <div class="group-label">Resolución</div>
-        ${segTemplate('resolution', [['original', 'Original'], ['1080', '1080p'], ['720', '720p'], ['480', '480p']])}
-        <p class="group-hint" data-hint="video"></p>
-      </div>`)}`;
+    <p class="group-hint" data-hint="format"></p>`);
 
-  const audioGroups = `
-    <div class="group" data-group="bitrate">
-      <div class="group-label">Calidad <em>kbps</em></div>
-      ${segTemplate('bitrate', [['128', '128'], ['192', '192'], ['256', '256'], ['320', '320']])}
-      <p class="group-hint" data-hint="bitrate"></p>
-    </div>
-    <div class="group">
-      <div class="group-label">Normalizar volumen</div>
-      ${segTemplate('normalize', [['off', 'No'], ['on', 'Sí, a −16 LUFS']])}
-      <p class="group-hint" data-hint="normalize"></p>
-    </div>
-    ${moreTemplate(`
-      <div class="group">
-        <div class="group-label">Canales</div>
-        ${segTemplate('channels', [['original', 'Original'], ['2', 'Estéreo'], ['1', 'Mono']])}
-      </div>
-      <div class="group">
-        <div class="group-label">Frecuencia</div>
-        ${segTemplate('rate', [['original', 'Original'], ['44100', '44.1 kHz'], ['48000', '48 kHz']])}
-        <p class="group-hint" data-hint="rate"></p>
-      </div>`)}`;
+  const videoGroups = group(t('g.mode'), `${segTemplate('mode')}<p class="group-hint" data-hint="mode"></p>`, 'data-group="mode"')
+    + group(t('g.quality'), segTemplate('quality'))
+    + moreTemplate(group(t('g.resolution'), `${segTemplate('resolution')}<p class="group-hint" data-hint="video"></p>`));
 
-  const imageGroups = `
-    <div class="group" data-group="quality">
-      <div class="group-label">Calidad</div>
-      ${segTemplate('quality', [['alta', 'Alta'], ['media', 'Media'], ['baja', 'Ligera']])}
-      <p class="group-hint" data-hint="quality"></p>
-    </div>
-    <div class="group">
-      <div class="group-label">Tamaño <em>lado más largo</em></div>
-      ${segTemplate('size', [['original', 'Original'], ['3840', '4K'], ['1920', '1920'], ['1280', '1280'], ['800', '800']])}
-      <p class="group-hint" data-hint="size"></p>
-    </div>`;
+  const audioGroups = group(`${t('g.quality')} <em>kbps</em>`, `${segTemplate('bitrate')}<p class="group-hint" data-hint="bitrate"></p>`, 'data-group="bitrate"')
+    + group(t('g.normalize'), `${segTemplate('normalize')}<p class="group-hint" data-hint="normalize"></p>`)
+    + moreTemplate(group(t('g.channels'), segTemplate('channels'))
+      + group(t('g.rate'), `${segTemplate('rate')}<p class="group-hint" data-hint="rate"></p>`));
 
-  const groups = { video: videoGroups, image: imageGroups }[key] ?? audioGroups;
+  const imageGroups = group(t('g.quality'), `${segTemplate('quality')}<p class="group-hint" data-hint="quality"></p>`, 'data-group="quality"')
+    + group(`${t('g.size')} <em>${t('g.size.em')}</em>`, `${segTemplate('size')}<p class="group-hint" data-hint="size"></p>`);
 
-  const destGroup = `
-    <div class="group">
-      <div class="group-label">Guardar en</div>
-      ${segTemplate('dest', [['same', 'Junto al original'], ['custom', 'Otra carpeta…']])}
-      <button type="button" class="folder-chip" data-act="folder" hidden>
-        ${ICON.folder}<span class="folder-path"></span>
-      </button>
-    </div>`;
+  const destGroup = group(t('g.dest'), `
+    ${segTemplate('dest')}
+    <button type="button" class="folder-chip" data-act="folder" hidden>
+      ${ICON.folder}<span class="folder-path"></span>
+    </button>`);
 
-  return formatGroup + groups + destGroup;
+  return formatGroup + ({ video: videoGroups, image: imageGroups }[key] ?? audioGroups) + destGroup;
 }
 
 function panelTemplate(key) {
@@ -268,25 +247,25 @@ function panelTemplate(key) {
     <div class="workspace">
       <div class="panel-head">
         <div>
-          <h1>${cfg.title}</h1>
-          <p>${cfg.subtitle}</p>
+          <h1>${t(`title.${key}`)}</h1>
+          <p>${t(`sub.${key}`)}</p>
         </div>
         <div class="queue-tools" hidden>
           <span class="queue-count"></span>
-          <button type="button" class="btn-ghost" data-act="clear">Limpiar lista</button>
+          <button type="button" class="btn-ghost" data-act="clear">${t('q.clear')}</button>
         </div>
       </div>
 
       <button type="button" class="dropzone" data-act="pick">
         <span class="dz-icon">${ICON.upload}</span>
         <span class="dz-text">
-          <strong>Arrastra tus ${cfg.noun} aquí</strong>
-          <span>o <u>haz clic para ${cfg.pick || 'elegirlos'}</u> de tu equipo</span>
+          <strong>${t(`dz.title.${key}`)}</strong>
+          <span>${tOr(`dz.sub.${key}`, 'dz.sub')}</span>
         </span>
         <span class="dz-formats">${exts.filter((e) => e !== 'aif').map((e) => `<i>${e}</i>`).join('')}</span>
       </button>
 
-      <ul class="queue" aria-label="Archivos"></ul>
+      <ul class="queue" aria-label="${t('q.files')}"></ul>
     </div>
 
     <aside class="settings">
@@ -306,13 +285,13 @@ function panelTemplate(key) {
 
 function statusTemplate(item) {
   switch (item.status) {
-    case 'probing': return '<span class="pill">Analizando…</span>';
-    case 'pending': return '<span class="pill">Listo</span>';
-    case 'queued': return '<span class="pill">En cola</span>';
+    case 'probing': return `<span class="pill">${t('s.probing')}</span>`;
+    case 'pending': return `<span class="pill">${t('s.pending')}</span>`;
+    case 'queued': return `<span class="pill">${t('s.queued')}</span>`;
     case 'running': return `<span class="pill is-running"><b class="pct">${Math.floor(item.progress || 0)}%</b><small class="eta">${fmtEta(item.eta)}</small></span>`;
-    case 'done': return '<span class="pill is-done">Convertido</span>';
-    case 'canceled': return '<span class="pill">Cancelado</span>';
-    default: return '<span class="pill is-error">Error</span>';
+    case 'done': return `<span class="pill is-done">${t('s.done')}</span>`;
+    case 'canceled': return `<span class="pill">${t('s.canceled')}</span>`;
+    default: return `<span class="pill is-error">${t('s.error')}</span>`;
   }
 }
 
@@ -321,9 +300,9 @@ function itemTemplate(key, item) {
   const target = (item.status === 'done' || item.status === 'running' || item.status === 'queued' ? item.target : st.settings.format) || '';
   let meta;
   if (item.status === 'invalid' || item.status === 'error') {
-    meta = `<span class="item-error">${esc(item.error)}</span>`;
+    meta = `<span class="item-error">${esc(errorText(item.error))}</span>`;
   } else if (item.status === 'done') {
-    meta = `<span>Guardado como <b>${esc(nameOf(item.output))}</b></span><span>${fmtSize(item.outputSize)}</span>`;
+    meta = `<span>${t('q.savedAs')} <b>${esc(nameOf(item.output))}</b></span><span>${fmtSize(item.outputSize)}</span>`;
   } else {
     meta = [fmtSize(item.size), fmtDuration(item.duration), item.resolution]
       .filter(Boolean).map((m) => `<span>${esc(m)}</span>`).join('')
@@ -332,12 +311,12 @@ function itemTemplate(key, item) {
 
   const actions = [];
   if (item.status === 'done') {
-    actions.push(`<button type="button" class="icon-btn" data-act="reveal" title="Mostrar en carpeta">${ICON.folder}</button>`);
+    actions.push(`<button type="button" class="icon-btn" data-act="reveal" title="${t('q.reveal')}">${ICON.folder}</button>`);
   }
   if (item.status === 'running') {
-    actions.push(`<button type="button" class="icon-btn is-stop" data-act="cancel" title="Cancelar">${ICON.stop}</button>`);
+    actions.push(`<button type="button" class="icon-btn is-stop" data-act="cancel" title="${t('q.cancel')}">${ICON.stop}</button>`);
   } else {
-    actions.push(`<button type="button" class="icon-btn" data-act="remove" title="Quitar de la lista">${ICON.x}</button>`);
+    actions.push(`<button type="button" class="icon-btn" data-act="remove" title="${t('q.remove')}">${ICON.x}</button>`);
   }
 
   return `
@@ -361,10 +340,12 @@ function renderSettings(key) {
   const st = state.tabs[key];
   const root = st.el;
   const s = st.settings;
+  const cfg = TABS[key];
+  const fmt = cfg.formats.find((f) => f.id === s.format);
 
-  for (const group of $$('[data-setting]', root)) {
-    const value = s[group.dataset.setting];
-    for (const btn of $$('[data-value]', group)) {
+  for (const g of $$('[data-setting]', root)) {
+    const value = s[g.dataset.setting];
+    for (const btn of $$('[data-value]', g)) {
       const on = btn.dataset.value === value;
       btn.classList.toggle('is-selected', on);
       btn.setAttribute('aria-checked', on);
@@ -373,59 +354,36 @@ function renderSettings(key) {
 
   for (const more of $$('.more', root)) {
     $('.more-summary', more).textContent = $$('[data-setting]', more)
-      .filter((g) => s[g.dataset.setting] !== TABS[key].defaults[g.dataset.setting])
+      .filter((g) => s[g.dataset.setting] !== cfg.defaults[g.dataset.setting])
       .map((g) => $('.is-selected', g)?.textContent)
       .join(' · ');
   }
 
+  $('[data-hint="format"]', root).textContent = t(`fmt.${cfg.fmtGroup}.${fmt.id}`);
+  const disable = (name, off) => {
+    const el = $(`[data-group="${name}"]`, root);
+    el.classList.toggle('is-disabled', off);
+    $$('[data-value]', el).forEach((b) => { b.disabled = off; });
+  };
+
   if (key === 'video') {
-    const fmt = TABS.video.formats.find((f) => f.id === s.format);
     const gif = s.format === 'gif';
-    $('[data-hint="format"]', root).textContent = fmt.desc;
-
-    const mode = $('[data-group="mode"]', root);
-    mode.classList.toggle('is-disabled', gif);
-    $$('[data-value]', mode).forEach((b) => { b.disabled = gif; });
-    $('[data-hint="mode"]', root).textContent = gif
-      ? 'El GIF siempre se genera desde cero con una paleta de colores optimizada.'
-      : s.mode === 'fast'
-        ? 'Copia el video sin recodificar cuando se puede: muy rápido y sin perder calidad. Si no, lo recodifica.'
-        : `Recodifica siempre al códec estándar de ${fmt.label}. Más lento, pero máxima compatibilidad.`;
-
+    disable('mode', gif);
+    $('[data-hint="mode"]', root).textContent = gif ? t('h.gifMode')
+      : s.mode === 'fast' ? t('h.fast') : t('h.compat', { fmt: fmt.label });
     $('[data-hint="video"]', root).textContent = gif
-      ? (s.resolution === 'original' ? 'Para GIF recomendamos 480p: a resolución original pesan mucho.' : 'Si el video es más pequeño, conserva su tamaño.')
-      : s.resolution !== 'original'
-        ? 'Cambiar la resolución recodifica el video con la calidad elegida.'
-        : '';
+      ? t(s.resolution === 'original' ? 'h.gifResOriginal' : 'h.gifResSmaller')
+      : s.resolution !== 'original' ? t('h.resolution') : '';
   } else if (key === 'image') {
-    const fmt = TABS.image.formats.find((f) => f.id === s.format);
-    $('[data-hint="format"]', root).textContent = fmt.desc;
-
-    const quality = $('[data-group="quality"]', root);
-    quality.classList.toggle('is-disabled', !fmt.lossy);
-    $$('[data-value]', quality).forEach((b) => { b.disabled = !fmt.lossy; });
-    $('[data-hint="quality"]', root).textContent = fmt.lossy
-      ? 'Alta es casi idéntica al original; Ligera pesa mucho menos.'
-      : `${fmt.label} guarda la imagen sin pérdida; no usa nivel de calidad.`;
-
-    $('[data-hint="size"]', root).textContent = s.format === 'ico'
-      ? 'Los íconos se reducen a un máximo de 256 px.'
-      : s.size === 'original' ? '' : 'Las fotos más pequeñas que este tamaño no se agrandan.';
+    disable('quality', !fmt.lossy);
+    $('[data-hint="quality"]', root).textContent = fmt.lossy ? t('h.imgLossy') : t('h.imgLossless', { fmt: fmt.label });
+    $('[data-hint="size"]', root).textContent = s.format === 'ico' ? t('h.ico') : s.size === 'original' ? '' : t('h.size');
   } else {
-    const fmt = AUDIO_FORMATS.find((f) => f.id === s.format);
-    const group = $('[data-group="bitrate"]', root);
-    group.classList.toggle('is-disabled', !fmt.lossy);
-    $$('[data-value]', group).forEach((b) => { b.disabled = !fmt.lossy; });
-    $('[data-hint="format"]', root).textContent = fmt.desc;
-    $('[data-hint="bitrate"]', root).textContent = fmt.lossy
-      ? '192 sirve para casi todo; 320 para música exigente.'
-      : `${fmt.label} conserva toda la calidad del original; no usa bitrate.`;
-    $('[data-hint="rate"]', root).textContent = s.format === 'opus'
-      ? 'Opus siempre trabaja a 48 kHz.'
-      : s.format === 'ac3' && s.rate === 'original' ? 'AC3 usa 32, 44.1 o 48 kHz; se ajusta si hace falta.' : '';
-    $('[data-hint="normalize"]', root).textContent = s.normalize === 'on'
-      ? 'Estándar de podcasts: lo bajito se oye claro y lo fuerte no satura.'
-      : '';
+    disable('bitrate', !fmt.lossy);
+    $('[data-hint="bitrate"]', root).textContent = fmt.lossy ? t('h.bitrate') : t('h.lossless', { fmt: fmt.label });
+    $('[data-hint="rate"]', root).textContent = s.format === 'opus' ? t('h.opus')
+      : s.format === 'ac3' && s.rate === 'original' ? t('h.ac3') : '';
+    $('[data-hint="normalize"]', root).textContent = s.normalize === 'on' ? t('h.normalize') : '';
   }
 
   const chip = $('.folder-chip', root);
@@ -443,7 +401,7 @@ function renderQueue(key) {
 
   $('.dropzone', root).classList.toggle('is-compact', has);
   $('.queue-tools', root).hidden = !has;
-  $('.queue-count', root).textContent = plural(st.items.length, 'archivo', 'archivos');
+  $('.queue-count', root).textContent = t('q.count', { n: st.items.length });
   $('[data-act="clear"]', root).disabled = st.running;
   $('.queue', root).innerHTML = st.items.map((item) => itemTemplate(key, item)).join('');
 }
@@ -465,8 +423,8 @@ function renderFooter(key) {
   if (st.running) {
     btn.disabled = false;
     btn.classList.add('is-stop');
-    label.textContent = st.stopRequested ? 'Deteniendo…' : 'Detener';
-    text.textContent = `Convirtiendo ${Math.min(st.batch.finished + 1, st.batch.total)} de ${st.batch.total}`;
+    label.textContent = st.stopRequested ? t('f.stopping') : t('f.stop');
+    text.textContent = t('f.converting', { i: Math.min(st.batch.finished + 1, st.batch.total), n: st.batch.total });
     bar.classList.add('is-visible');
     $('span', bar).style.width = `${overallProgress(st)}%`;
     return;
@@ -478,15 +436,13 @@ function renderFooter(key) {
 
   btn.classList.remove('is-stop');
   btn.disabled = ready === 0;
-  label.textContent = ready === 0
-    ? (st.items.length ? 'Nada pendiente' : 'Añade archivos para empezar')
-    : `Convertir ${ready === 1 ? 'archivo' : plural(ready, 'archivo', 'archivos')}`;
+  label.textContent = ready === 0 ? t(st.items.length ? 'f.nothing' : 'f.add') : t('f.convert', { n: ready });
 
   const parts = [];
-  if (probing) parts.push('Analizando archivos…');
-  if (ready) parts.push(plural(ready, 'listo', 'listos'));
-  if (done) parts.push(plural(done, 'convertido', 'convertidos'));
-  text.textContent = parts.join(' · ') || 'Sin archivos todavía';
+  if (probing) parts.push(t('f.probing'));
+  if (ready) parts.push(t('f.ready', { n: ready }));
+  if (done) parts.push(t('f.done', { n: done }));
+  text.textContent = parts.join(' · ') || t('f.empty');
   bar.classList.remove('is-visible');
 }
 
@@ -518,6 +474,27 @@ function updateRunningItem(key, item) {
   if (eta) eta.textContent = fmtEta(item.eta);
 }
 
+// Pinta las cuatro pestañas desde cero (al iniciar y al cambiar de idioma). La lista y el
+// progreso viven en state, así que no se pierde nada.
+function buildView() {
+  const view = $('#view');
+  view.innerHTML = Object.keys(TABS).map(panelTemplate).join('');
+  for (const key of Object.keys(TABS)) {
+    state.tabs[key].el = $(`.panel[data-panel="${key}"]`, view);
+    refresh(key);
+  }
+  setTab(state.active);
+}
+
+// Textos fijos de index.html (pestañas, capa de arrastre, botón de configuración).
+function applyStaticText() {
+  for (const el of $$('[data-i18n]')) el.textContent = t(el.dataset.i18n);
+  $('.tabs').setAttribute('aria-label', t('tablist'));
+  const gear = $('[data-act="open-prefs"]');
+  gear.title = `${t('p.open')} (${shortcut(',')})`;
+  gear.setAttribute('aria-label', t('p.open'));
+}
+
 /* ---------- Pestañas ---------- */
 
 function moveIndicator() {
@@ -531,8 +508,42 @@ function setTab(key) {
   state.active = key;
   for (const tab of $$('.tab')) tab.setAttribute('aria-selected', tab.dataset.tab === key);
   for (const panel of $$('.panel')) panel.hidden = panel.dataset.panel !== key;
-  $('.drop-overlay-target').textContent = `a ${TABS[key].label}`;
+  $('.drop-overlay-target').textContent = t('drop.target', { tab: t(`tab.${key}`) });
   moveIndicator();
+}
+
+/* ---------- Opciones recordadas ---------- */
+
+function isValidSetting(key, name, value) {
+  if (name === 'format') return TABS[key].formats.some((f) => f.id === value);
+  return OPTIONS[name]?.includes(value) ?? false;
+}
+
+// Aplica lo guardado en settings.json, ignorando valores que ya no existan.
+function restoreTabs() {
+  const saved = state.prefs.remember ? state.prefs.tabs : {};
+  for (const key of Object.keys(TABS)) {
+    const st = state.tabs[key];
+    st.settings = { ...TABS[key].defaults };
+    st.outputDir = null;
+    const tab = saved[key];
+    if (!tab) continue;
+    for (const name of Object.keys(st.settings)) {
+      if (isValidSetting(key, name, tab[name])) st.settings[name] = tab[name];
+    }
+    if (tab.outputDir) st.outputDir = tab.outputDir;
+    if (st.settings.dest === 'custom' && !st.outputDir) st.settings.dest = 'same';
+  }
+}
+
+const saveTimers = {};
+function persistTab(key) {
+  if (!state.prefs?.remember) return;
+  clearTimeout(saveTimers[key]);
+  saveTimers[key] = setTimeout(async () => {
+    const st = state.tabs[key];
+    state.prefs = await api.setSettings({ tabs: { [key]: { ...st.settings, outputDir: st.outputDir || '' } } });
+  }, 300);
 }
 
 /* ---------- Archivos ---------- */
@@ -551,9 +562,7 @@ async function addFiles(key, paths) {
     fresh.push(item);
   }
 
-  if (rejected) {
-    toast(`${plural(rejected, 'archivo ignorado', 'archivos ignorados')}: formato no compatible con ${TABS[key].label}.`, { type: 'warn' });
-  }
+  if (rejected) toast(t('t.ignored', { n: rejected, tab: t(`tab.${key}`) }), { type: 'warn' });
   if (!fresh.length) return;
   refresh(key);
 
@@ -567,8 +576,7 @@ async function addFiles(key, paths) {
       item.error = info.error;
     } else if (!info[need]) {
       item.status = 'invalid';
-      item.error = key === 'image' ? 'No es una imagen válida.'
-        : need === 'hasVideo' ? 'Este archivo no tiene pista de video.' : 'Este archivo no tiene pista de audio.';
+      item.error = { code: key === 'image' ? 'NOT_IMAGE' : need === 'hasVideo' ? 'NO_VIDEO' : 'NO_AUDIO' };
     } else {
       item.status = 'pending';
     }
@@ -591,6 +599,7 @@ async function pickFolder(key) {
     st.settings.dest = 'same';
   }
   refresh(key);
+  persistTab(key);
 }
 
 /* ---------- Conversión ---------- */
@@ -642,7 +651,7 @@ async function startQueue(key) {
   for (const item of st.items) if (item.status === 'queued') item.status = 'pending';
   st.running = false;
   refresh(key);
-  announce(key, st.batch, st.stopRequested);
+  announce(st.batch, st.stopRequested);
 }
 
 function stopQueue(key) {
@@ -652,16 +661,17 @@ function stopQueue(key) {
   renderFooter(key);
 }
 
-function announce(key, batch, stopped) {
+function announce(batch, stopped) {
   const { done, failed, lastOutput } = batch;
   if (done) {
-    const msg = `${plural(done, 'archivo convertido', 'archivos convertidos')}${failed ? ` · ${failed} con error` : ''}`;
-    toast(msg, { type: 'success', action: { label: 'Mostrar', run: () => api.reveal(lastOutput) } });
-    if (!document.hasFocus()) new Notification('Kerygma Converter', { body: msg });
+    const msg = t('t.converted', { n: done }) + (failed ? t('t.withErrors', { n: failed }) : '');
+    toast(msg, { type: 'success', action: { label: t('t.show'), run: () => api.reveal(lastOutput) } });
+    if (state.prefs.notify && !document.hasFocus()) new Notification('Kerygma Converter', { body: msg });
+    if (state.prefs.openFolder) api.reveal(lastOutput);
   } else if (failed) {
-    toast(`No se pudo convertir ${plural(failed, 'archivo', 'archivos')}. Revisa el detalle en la lista.`, { type: 'error' });
+    toast(t('t.failed', { n: failed }), { type: 'error' });
   } else if (stopped) {
-    toast('Conversión detenida.', { type: 'info' });
+    toast(t('t.stopped'), { type: 'info' });
   }
 }
 
@@ -692,9 +702,150 @@ function toast(message, { type = 'info', action, timeout = 5000 } = {}) {
   setTimeout(close, timeout);
 }
 
+/* ---------- Configuración ---------- */
+
+function prefsTemplate() {
+  const p = state.prefs;
+  const seg = (pref) => `<div class="seg" data-pref="${pref}" role="radiogroup" aria-label="${t(`p.${pref}`)}">
+    ${PREF_OPTIONS[pref].map((v) => `<button type="button" role="radio" data-value="${v}">${esc(prefLabel(pref, v))}</button>`).join('')}
+  </div>`;
+  const toggle = (pref) => `<button type="button" class="switch" role="switch" data-pref="${pref}" aria-label="${t(`p.${pref}`)}"><span></span></button>`;
+  const row = (pref, control, wide = false) => `
+    <div class="pref-row${wide ? ' is-wide' : ''}">
+      <div class="pref-text">
+        <strong>${t(`p.${pref}`)}</strong>
+        <span>${t(`p.${pref}.desc`)}</span>
+      </div>
+      ${control}
+    </div>`;
+
+  return `
+    <div class="prefs-backdrop" data-act="close-prefs"></div>
+    <section class="prefs-dialog" role="dialog" aria-modal="true" aria-labelledby="prefs-title" tabindex="-1">
+      <header class="prefs-head">
+        <h2 id="prefs-title">${t('p.title')}</h2>
+        <button type="button" class="icon-btn" data-act="close-prefs" title="${t('p.close')}">${ICON.x}</button>
+      </header>
+      <div class="prefs-body">
+        <h3>${t('p.appearance')}</h3>
+        ${row('theme', seg('theme'), true)}
+        ${row('language', seg('language'), true)}
+
+        <h3>${t('p.conversion')}</h3>
+        ${row('existing', seg('existing'), true)}
+        ${row('remember', toggle('remember'))}
+
+        <h3>${t('p.finish')}</h3>
+        ${row('notify', toggle('notify'))}
+        ${row('openFolder', toggle('openFolder'))}
+
+        <h3>${t('p.about')}</h3>
+        <div class="about">
+          <svg class="brand-mark about-mark" viewBox="0 0 32 32" aria-hidden="true">
+            <rect width="32" height="32" rx="9"/>
+            <path d="M8 12.5v7M12 9.5v13M16 13v6M20 10.5v11M24 14v4" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/>
+          </svg>
+          <div class="about-text">
+            <strong>Kerygma Converter</strong>
+            <span>${t('p.version', { v: esc(p.version) })} · ${t('p.engine', { f: esc(p.ffmpeg || '—'), e: esc(p.electron) })}</span>
+            <span>${t('p.offline')}</span>
+          </div>
+        </div>
+        <div class="about-actions">
+          <button type="button" class="btn-ghost" data-act="open-repo">${ICON.github}${t('p.github')}</button>
+          <button type="button" class="btn-ghost" data-act="reset-prefs">${ICON.reset}${t('p.reset')}</button>
+        </div>
+      </div>
+    </section>`;
+}
+
+function renderPrefs() {
+  const root = $('#prefs');
+  const p = state.prefs;
+  for (const g of $$('.seg[data-pref]', root)) {
+    for (const btn of $$('[data-value]', g)) {
+      const on = btn.dataset.value === p[g.dataset.pref];
+      btn.classList.toggle('is-selected', on);
+      btn.setAttribute('aria-checked', on);
+    }
+  }
+  for (const sw of $$('.switch[data-pref]', root)) sw.setAttribute('aria-checked', p[sw.dataset.pref]);
+}
+
+function buildPrefs() {
+  $('#prefs').innerHTML = prefsTemplate();
+  renderPrefs();
+}
+
+function openPrefs() {
+  const root = $('#prefs');
+  if (!root.hidden) return;
+  buildPrefs();
+  root.hidden = false;
+  $('.prefs-dialog', root).focus();
+}
+
+function closePrefs() {
+  $('#prefs').hidden = true;
+  $('[data-act="open-prefs"]').focus();
+}
+
+function applyLanguage() {
+  setLanguage(state.prefs.effectiveLanguage);
+  applyStaticText();
+  buildView();
+  if (!$('#prefs').hidden) {
+    buildPrefs();
+    $('.prefs-dialog').focus();
+  }
+}
+
+async function setPref(pref, value) {
+  const before = state.prefs.effectiveLanguage;
+  const patch = { [pref]: value };
+  // Al activar "recordar", se guarda de inmediato lo que hay en cada pestaña.
+  if (pref === 'remember' && value) {
+    patch.tabs = Object.fromEntries(Object.entries(state.tabs)
+      .map(([key, st]) => [key, { ...st.settings, outputDir: st.outputDir || '' }]));
+  }
+  state.prefs = await api.setSettings(patch);
+  if (state.prefs.effectiveLanguage !== before) applyLanguage();
+  else renderPrefs();
+}
+
+async function resetPrefs() {
+  state.prefs = await api.resetSettings();
+  if (!Object.values(state.tabs).some((st) => st.running)) restoreTabs();
+  applyLanguage();
+  toast(t('p.resetDone'), { type: 'success' });
+}
+
+function onPrefsClick(e) {
+  const option = e.target.closest('.seg[data-pref] [data-value]');
+  if (option) {
+    const pref = option.closest('[data-pref]').dataset.pref;
+    if (state.prefs[pref] !== option.dataset.value) setPref(pref, option.dataset.value);
+    return;
+  }
+  const sw = e.target.closest('.switch[data-pref]');
+  if (sw) {
+    setPref(sw.dataset.pref, !state.prefs[sw.dataset.pref]);
+    return;
+  }
+  const btn = e.target.closest('[data-act]');
+  switch (btn?.dataset.act) {
+    case 'close-prefs': closePrefs(); break;
+    case 'open-repo': api.openRepo(); break;
+    case 'reset-prefs': resetPrefs(); break;
+  }
+}
+
 /* ---------- Eventos ---------- */
 
-function onPanelClick(key, e) {
+function onPanelClick(e) {
+  const panel = e.target.closest('.panel');
+  if (!panel) return;
+  const key = panel.dataset.panel;
   const st = state.tabs[key];
 
   const option = e.target.closest('[data-setting] [data-value]');
@@ -706,6 +857,7 @@ function onPanelClick(key, e) {
     }
     st.settings[setting] = option.dataset.value;
     refresh(key);
+    persistTab(key);
     return;
   }
 
@@ -764,9 +916,16 @@ function bindDragAndDrop() {
 function bindShortcuts() {
   const keys = Object.keys(TABS);
   document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !$('#prefs').hidden) {
+      closePrefs();
+      return;
+    }
     if (!(e.metaKey || e.ctrlKey)) return;
     const n = Number(e.key);
-    if (n >= 1 && n <= keys.length) {
+    if (e.key === ',') {
+      e.preventDefault();
+      openPrefs();
+    } else if (n >= 1 && n <= keys.length) {
       e.preventDefault();
       setTab(keys[n - 1]);
     } else if (e.key.toLowerCase() === 'o') {
@@ -779,20 +938,20 @@ function bindShortcuts() {
 /* ---------- Inicio ---------- */
 
 async function init() {
-  const config = await api.getConfig();
+  const [config, prefs] = await Promise.all([api.getConfig(), api.getSettings()]);
   state.accept = config.accept;
+  state.platform = config.platform;
+  state.prefs = prefs;
   document.body.classList.add(config.platform === 'darwin' ? 'is-mac' : 'is-win');
 
-  const view = $('#view');
-  view.innerHTML = Object.keys(TABS).map(panelTemplate).join('');
+  setLanguage(prefs.effectiveLanguage);
+  restoreTabs();
+  applyStaticText();
+  buildView();
 
-  for (const key of Object.keys(TABS)) {
-    const st = state.tabs[key];
-    st.el = $(`.panel[data-panel="${key}"]`, view);
-    st.el.addEventListener('click', (e) => onPanelClick(key, e));
-    refresh(key);
-  }
-
+  $('#view').addEventListener('click', onPanelClick);
+  $('#prefs').addEventListener('click', onPrefsClick);
+  $('[data-act="open-prefs"]').addEventListener('click', openPrefs);
   for (const tab of $$('.tab')) tab.addEventListener('click', () => setTab(tab.dataset.tab));
   window.addEventListener('resize', moveIndicator);
 
@@ -810,7 +969,6 @@ async function init() {
 
   bindDragAndDrop();
   bindShortcuts();
-  setTab('video');
   requestAnimationFrame(() => document.body.classList.add('is-ready'));
 }
 

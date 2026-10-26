@@ -2,6 +2,10 @@ const { contextBridge, ipcRenderer, webUtils } = require('electron');
 
 contextBridge.exposeInMainWorld('kerygma', {
   getConfig: () => ipcRenderer.invoke('app:config'),
+  getSettings: () => ipcRenderer.invoke('settings:get'),
+  setSettings: (patch) => ipcRenderer.invoke('settings:set', patch),
+  resetSettings: () => ipcRenderer.invoke('settings:reset'),
+  openRepo: () => ipcRenderer.invoke('app:open-repo'),
   pickFiles: (kind) => ipcRenderer.invoke('files:pick', kind),
   pickFolder: () => ipcRenderer.invoke('folder:pick'),
   probe: (paths) => ipcRenderer.invoke('files:probe', paths),

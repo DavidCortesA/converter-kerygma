@@ -26,6 +26,27 @@ La app sigue el tema claro u oscuro del sistema:
 | ![Pestaña Video en tema claro](docs/screenshots/light-video.png) | ![Pestaña Audio en tema claro](docs/screenshots/light-audio.png) |
 | ![Pestaña Foto en tema claro](docs/screenshots/light-foto.png) | ![Pantalla inicial sin archivos](docs/screenshots/dark-vacio.png) |
 
+## Configuración
+
+El engranaje de la barra superior (o `Ctrl/⌘ + ,`) abre la configuración. Los cambios se aplican al instante y se guardan para la próxima vez.
+
+| Tema oscuro | Tema claro |
+|---|---|
+| ![Configuración en tema oscuro](docs/screenshots/dark-config.png) | ![Configuración en tema claro](docs/screenshots/light-config.png) |
+
+| Opción | Valores | Por defecto |
+|---|---|---|
+| **Tema** | Sistema, Claro, Oscuro | Sistema |
+| **Idioma** | Sistema, Español, English | Sistema (español si Windows/macOS está en español; si no, inglés) |
+| **Si el archivo ya existe** | Crear copia `nombre (1)` o Reemplazar | Crear copia |
+| **Recordar formato y opciones** | Cada pestaña abre con lo último que usaste, incluida la carpeta de destino | Activado |
+| **Notificación del sistema** | Aviso al terminar si la app está en segundo plano | Activado |
+| **Abrir la carpeta de destino** | Muestra los archivos convertidos al terminar | Desactivado |
+
+También muestra la versión de la app y de ffmpeg, un enlace al repositorio y **Restablecer configuración**.
+
+Las preferencias se guardan en `settings.json`, dentro de la carpeta de datos de la app (`%APPDATA%\Kerygma Converter` en Windows, `~/Library/Application Support/Kerygma Converter` en Mac). Al convertir, la app escribe primero en un archivo temporal y lo renombra al terminar: con **Reemplazar**, si la conversión falla o se cancela, el archivo anterior queda intacto.
+
 ## Funciones
 
 - Arrastra y suelta varios archivos a la vez (o `Ctrl/⌘ + O`).
@@ -48,7 +69,8 @@ La app sigue el tema claro u oscuro del sistema:
 - Elige la carpeta de destino: junto al original u otra carpeta.
 - **Fotos**: calidad (alta, media o ligera) y tamaño máximo (4K, 1920, 1280 u 800 px por el lado más largo, sin agrandar las pequeñas). Respeta la orientación de las fotos de celular. JPG, AVIF y BMP no admiten transparencia, así que el fondo transparente pasa a blanco; PNG, WEBP, TIFF, GIF e ICO la conservan. ICO se reduce a 256 px como máximo. Por ahora no lee fotos HEIC de iPhone.
 - Nunca sobrescribe: si el archivo ya existe, guarda como `nombre (1).mp4`.
-- Tema claro/oscuro automático según el sistema. Atajos `Ctrl/⌘ + 1…4` para cambiar de pestaña.
+- En español e inglés, con tema claro u oscuro (ver [Configuración](#configuración)).
+- Atajos: `Ctrl/⌘ + 1…4` cambia de pestaña, `Ctrl/⌘ + O` abre archivos y `Ctrl/⌘ + ,` abre la configuración.
 
 ## Desarrollo
 
@@ -79,8 +101,8 @@ Los archivos quedan en `dist/`:
 Para obtener todos sin tener una Mac, actualiza `version` en `package.json`, y luego crea y sube un tag con esa versión:
 
 ```bash
-git tag v0.2.0
-git push origin v0.2.0
+git tag v0.2.2
+git push origin v0.2.2
 ```
 
 El workflow de [`.github/workflows/build.yml`](.github/workflows/build.yml) compila las cuatro versiones y crea una **Release** en GitHub donde cada instalador se descarga por separado. Si lanzas el workflow a mano desde **Actions**, cada versión queda como un artifact independiente.
@@ -121,8 +143,12 @@ src/
     main.js     ventana, diálogos e IPC
     ffmpeg.js   análisis, conversión con progreso y cancelación
     presets.js  formatos y argumentos de ffmpeg
+    settings.js preferencias guardadas en settings.json
   preload/    puente seguro entre la interfaz y el sistema
   renderer/   interfaz (HTML, CSS y JS sin dependencias)
+    i18n.js     textos en español e inglés
+    app.js      pestañas, lista de archivos y configuración
+build/        ícono, imágenes y personalización del instalador
 ```
 
 ## Licencias
