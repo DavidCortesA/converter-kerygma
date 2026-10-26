@@ -1,7 +1,7 @@
 {
   "name": "converter-kerygma",
   "productName": "Kerygma Converter",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Convertidor de video, audio y fotos para Mac y Windows que funciona sin internet.",
   "main": "src/main/main.js",
   "license": "MIT",
@@ -55,7 +55,15 @@
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
+      "language": "3082",
+      "installerLanguages": [
+        "es_ES"
+      ],
+      "menuCategory": "Kerygma Converter",
       "shortcutName": "Kerygma Converter",
+      "uninstallDisplayName": "Kerygma Converter",
+      "deleteAppDataOnUninstall": true,
+      "include": "build/installer.nsh",
       "artifactName": "Kerygma-Converter-${version}-Windows-Instalador.${ext}"
     },
     "portable": {

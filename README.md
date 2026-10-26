@@ -88,6 +88,30 @@ El workflow de [`.github/workflows/build.yml`](.github/workflows/build.yml) comp
 El ícono se genera desde el logo: `build/icon.png` (Windows) y `build/icon-mac.png` (Mac, con el margen de los íconos de macOS).
 
 > **Mac:** la app no está firmada con un certificado de Apple, así que la primera vez hay que abrirla con clic derecho → **Abrir**.
+>
+> **Windows:** tampoco está firmada, así que SmartScreen puede mostrar "Windows protegió su PC": haz clic en **Más información → Ejecutar de todas formas**.
+
+### Instalador de Windows
+
+El instalador está en español y usa los colores de la app: bienvenida y pantalla final en oscuro con el logo, cabeceras oscuras, registro de instalación oscuro y barra de progreso naranja. Los botones y campos siguen el estilo nativo de Windows.
+
+| Bienvenida | Carpeta de destino |
+|---|---|
+| ![Bienvenida del instalador](docs/screenshots/instalador-bienvenida.png) | ![Elegir carpeta de instalación](docs/screenshots/instalador-carpeta.png) |
+| **Instalando** | **Final** |
+| ![Progreso de la instalación](docs/screenshots/instalador-progreso.png) | ![Pantalla final del instalador](docs/screenshots/instalador-final.png) |
+
+Crea la carpeta **Kerygma Converter** en el menú Inicio, con la app y un acceso directo **Desinstalar Kerygma Converter**.
+
+**Para desinstalar** (cualquiera de estas opciones):
+
+- Menú Inicio → Kerygma Converter → **Desinstalar Kerygma Converter**.
+- **Configuración → Aplicaciones → Aplicaciones instaladas** → Kerygma Converter → Desinstalar.
+- Ejecutar `Uninstall Kerygma Converter.exe` en la carpeta donde se instaló.
+
+El desinstalador quita la app, sus accesos directos y sus datos. La versión **portable** no se instala: para quitarla basta con borrar el `.exe`.
+
+La personalización está en [`build/installer.nsh`](build/installer.nsh); las imágenes, en `build/installerSidebar.bmp` (164×314) y `build/installerHeader.bmp` (150×57).
 
 ## Estructura
 
