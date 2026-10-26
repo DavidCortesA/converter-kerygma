@@ -4,13 +4,22 @@ Convertidor de video y audio de escritorio para **Mac y Windows**. Funciona 100 
 
 | Pestaña | Qué hace | Entradas | Salidas |
 |---|---|---|---|
-| **Video** | MOV ⇄ MP4 | MOV, MP4, M4V, MKV, AVI, WEBM | MP4, MOV |
+| **Video** | De un formato de video a otro | MOV, MP4, M4V, MKV, AVI, WEBM, WMV, FLV, MPG, TS, MTS, M2TS, 3GP, OGV, GIF | MP4, MOV, MKV, WEBM, AVI, M4V, WMV, MPG, TS, FLV, 3GP, GIF |
 | **Audio** | De un formato de audio a otro | MP3, WAV, M4A, AAC, FLAC, OGG, OPUS, WMA, AIFF | MP3, M4A, WAV, FLAC, OGG, OPUS |
-| **Video → Audio** | Extrae la pista de audio | MOV, MP4, M4V, MKV, AVI, WEBM | MP3, M4A, WAV, FLAC, OGG, OPUS |
+| **Video → Audio** | Extrae la pista de audio | Los mismos videos (salvo GIF) | MP3, M4A, WAV, FLAC, OGG, OPUS |
 
 - Arrastra y suelta varios archivos a la vez (o `Ctrl/⌘ + O`).
-- **Modo rápido** en video: copia la imagen sin recodificar cuando el formato lo permite (segundos, sin pérdida). Si no se puede, recodifica automáticamente.
-- **Máxima compatibilidad**: recodifica a H.264 + AAC, con calidad y resolución configurables.
+- **Modo rápido** en video: copia la imagen y el audio sin recodificar cuando el formato de destino los admite (segundos, sin pérdida). Si no se puede, recodifica automáticamente solo lo necesario.
+- **Máxima compatibilidad**: recodifica siempre al códec estándar de cada formato, con calidad y resolución configurables:
+
+  | Formato | Video | Audio |
+  |---|---|---|
+  | MP4, MOV, M4V, MKV, TS, FLV, 3GP | H.264 | AAC |
+  | WEBM | VP9 | Opus |
+  | AVI | MPEG-4 (Xvid) | MP3 |
+  | WMV | WMV2 | WMA |
+  | MPG | MPEG-2 | MP2 |
+  | GIF | Paleta optimizada, 10–20 fps | — |
 - Elige bitrate para audio (128–320 kbps) y la carpeta de destino.
 - Nunca sobrescribe: si el archivo ya existe, guarda como `nombre (1).mp4`.
 - Tema claro/oscuro automático según el sistema. Atajos `Ctrl/⌘ + 1/2/3` para cambiar de pestaña.

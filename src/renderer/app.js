@@ -17,12 +17,23 @@ const TABS = {
   video: {
     label: 'Video',
     title: 'Convertir video',
-    subtitle: 'Cambia tus videos entre MOV y MP4 en segundos.',
+    subtitle: 'Convierte tus videos a cualquier formato común.',
     noun: 'videos',
     needs: 'video',
+    compact: true,
     formats: [
-      { id: 'mp4', label: 'MP4', hint: 'Universal · web' },
-      { id: 'mov', label: 'MOV', hint: 'Apple · edición' },
+      { id: 'mp4', label: 'MP4', desc: 'H.264 + AAC. Se reproduce en todo: celulares, web, TV y redes sociales.' },
+      { id: 'mov', label: 'MOV', desc: 'Formato de Apple. Ideal para QuickTime, iMovie y Final Cut.' },
+      { id: 'mkv', label: 'MKV', desc: 'Contenedor flexible: en modo rápido conserva cualquier códec sin recodificar.' },
+      { id: 'webm', label: 'WEBM', desc: 'VP9 + Opus. Pensado para páginas web; codificar tarda un poco más.' },
+      { id: 'avi', label: 'AVI', desc: 'MPEG-4 (Xvid) + MP3. Para reproductores y programas antiguos.' },
+      { id: 'm4v', label: 'M4V', desc: 'Variante de MP4 para iTunes, Apple TV y dispositivos Apple.' },
+      { id: 'wmv', label: 'WMV', desc: 'Windows Media. Para PowerPoint y equipos Windows antiguos.' },
+      { id: 'mpg', label: 'MPG', desc: 'MPEG-2. Para DVD y reproductores de mesa.' },
+      { id: 'ts', label: 'TS', desc: 'MPEG-TS. Para transmisiones en vivo, IPTV y algunos decodificadores.' },
+      { id: 'flv', label: 'FLV', desc: 'Flash Video. Solo para plataformas que todavía lo piden.' },
+      { id: '3gp', label: '3GP', desc: 'Para celulares básicos; archivos pequeños.' },
+      { id: 'gif', label: 'GIF', desc: 'Animación sin audio. La calidad define la fluidez (20, 15 o 10 cuadros por segundo).' },
     ],
     defaults: { format: 'mp4', mode: 'fast', quality: 'alta', resolution: 'original', dest: 'same' },
   },
@@ -129,20 +140,21 @@ function segTemplate(setting, options) {
 }
 
 function settingsTemplate(key, cfg) {
-  const cols = cfg.formats.length > 2 ? 'cols-3' : 'cols-2';
+  const cols = cfg.compact ? 'cols-4 is-compact' : 'cols-3';
   const formatGroup = `
     <div class="group">
       <div class="group-label">Formato de salida</div>
       <div class="chips ${cols}" data-setting="format" role="radiogroup">
         ${cfg.formats.map((f) => `
           <button type="button" class="chip" role="radio" data-value="${f.id}">
-            <strong>${f.label}</strong><span>${f.hint}</span>
+            <strong>${f.label}</strong>${f.hint ? `<span>${f.hint}</span>` : ''}
           </button>`).join('')}
       </div>
+      ${cfg.compact ? '<p class="group-hint" data-hint="format"></p>' : ''}
     </div>`;
 
   const videoGroups = `
-    <div class="group">
+    <div class="group" data-group="mode">
       <div class="group-label">Modo</div>
       ${segTemplate('mode', [['fast', 'Rápido'], ['compat', 'Máxima compatibilidad']])}
       <p class="group-hint" data-hint="mode"></p>
@@ -286,12 +298,24 @@ function renderSettings(key) {
   }
 
   if (key === 'video') {
-    $('[data-hint="mode"]', root).textContent = s.mode === 'fast'
-      ? 'Copia el video sin recodificar cuando se puede: muy rápido y sin perder calidad.'
-      : 'Recodifica a H.264 + AAC. Más lento, pero se reproduce en cualquier dispositivo.';
-    $('[data-hint="video"]', root).textContent = s.resolution !== 'original'
-      ? 'Cambiar la resolución recodifica el video con la calidad elegida.'
-      : 'La calidad se aplica cuando el video se recodifica.';
+    const fmt = TABS.video.formats.find((f) => f.id === s.format);
+    const gif = s.format === 'gif';
+    $('[data-hint="format"]', root).textContent = fmt.desc;
+
+    const mode = $('[data-group="mode"]', root);
+    mode.classList.toggle('is-disabled', gif);
+    $$('[data-value]', mode).forEach((b) => { b.disabled = gif; });
+    $('[data-hint="mode"]', root).textContent = gif
+      ? 'El GIF siempre se genera desde cero con una paleta de colores optimizada.'
+      : s.mode === 'fast'
+        ? 'Copia el video sin recodificar cuando se puede: muy rápido y sin perder calidad. Si no, lo recodifica.'
+        : `Recodifica siempre al códec estándar de ${fmt.label}. Más lento, pero máxima compatibilidad.`;
+
+    $('[data-hint="video"]', root).textContent = gif
+      ? (s.resolution === 'original' ? 'Para GIF recomendamos 480p: a resolución original pesan mucho.' : 'Si el video es más pequeño, conserva su tamaño.')
+      : s.resolution !== 'original'
+        ? 'Cambiar la resolución recodifica el video con la calidad elegida.'
+        : '';
   } else {
     const fmt = AUDIO_FORMATS.find((f) => f.id === s.format);
     const group = $('[data-group="bitrate"]', root);

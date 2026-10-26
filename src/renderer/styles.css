@@ -543,7 +543,10 @@ body.is-dragging .panel:not([hidden]) .dropzone { transform: scale(1.008); }
   line-height: 1.45;
 }
 
+.group-hint:empty { display: none; }
+
 .group.is-disabled .seg { opacity: 0.45; }
+.group.is-disabled .seg button { cursor: default; }
 
 .chips {
   display: grid;
@@ -552,6 +555,15 @@ body.is-dragging .panel:not([hidden]) .dropzone { transform: scale(1.008); }
 
 .chips.cols-2 { grid-template-columns: repeat(2, 1fr); }
 .chips.cols-3 { grid-template-columns: repeat(3, 1fr); }
+.chips.cols-4 { grid-template-columns: repeat(4, 1fr); gap: 6px; }
+
+.chips.is-compact .chip {
+  align-items: center;
+  padding: 9px 4px;
+  border-radius: 10px;
+}
+
+.chips.is-compact .chip strong { font-size: 13px; }
 
 .chip {
   position: relative;
