@@ -1,0 +1,50 @@
+# Genera los instaladores de Mac y Windows.
+# Se ejecuta al publicar un tag (git tag v0.1.0 && git push --tags) o manualmente desde la pestaña Actions.
+name: Build
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            arch: x64
+            target: --win
+          - os: macos-latest
+            arch: arm64
+            target: --mac
+          - os: macos-latest
+            arch: x64
+            target: --mac
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # npm_config_arch hace que ffmpeg-static descargue el binario de la arquitectura destino.
+      - run: npm ci
+        env:
+          npm_config_arch: ${{ matrix.arch }}
+
+      - run: npx electron-builder ${{ matrix.target }} --${{ matrix.arch }} --publish never
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: converter-kerygma-${{ runner.os }}-${{ matrix.arch }}
+          path: |
+            dist/*.exe
+            dist/*.dmg
+            dist/*.zip
+          if-no-files-found: error
