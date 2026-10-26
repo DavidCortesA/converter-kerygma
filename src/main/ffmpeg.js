@@ -3,7 +3,8 @@
 const { spawn } = require('node:child_process');
 const fs = require('node:fs');
 const path = require('node:path');
-const { buildArgs, validateJob } = require('./presets');
+const { pathToFileURL } = require('node:url');
+const { buildArgs, validateJob, outputExt, outputDuration } = require('./presets');
 
 // Dentro del paquete, el binario vive en app.asar.unpacked (ver "asarUnpack" en package.json).
 const ffmpegPath = require('ffmpeg-static').replace(/app\.asar(?!\.unpacked)/, 'app.asar.unpacked');
@@ -34,6 +35,8 @@ function probe(file) {
     proc.on('error', (e) => resolve({ path: file, error: e.message }));
     proc.on('close', () => {
       const info = { path: file, size: stat.size, duration: 0, hasVideo: false, hasAudio: false, vcodec: null, acodec: null };
+      // URL para miniaturas; realpath expande rutas cortas de Windows (DAVIDC~1) que Chromium no carga.
+      try { info.url = pathToFileURL(fs.realpathSync.native(file)).href; } catch { /* sin miniatura */ }
       const dur = /Duration:\s*(\d+):(\d+):(\d+(?:\.\d+)?)/.exec(err);
       if (dur) info.duration = parseTime(dur[1], dur[2], dur[3]);
 
@@ -48,6 +51,10 @@ function probe(file) {
         } else if (m[1] === 'Audio' && !info.hasAudio) {
           info.hasAudio = true;
           info.acodec = m[2];
+          const hz = /, (\d{4,6}) Hz/.exec(line);
+          if (hz) info.sampleRate = Number(hz[1]);
+          const ch = /Hz, ([^,]+),/.exec(line);
+          if (ch) info.channels = ch[1];
         }
       }
 
@@ -80,8 +87,9 @@ async function convert(job, onProgress) {
 
   const info = await probe(job.input);
   if (info.error) return { ok: false, error: info.error };
-  if (job.kind === 'video' && !info.hasVideo) return { ok: false, error: 'El archivo no contiene video.' };
-  if (job.kind !== 'video' && !info.hasAudio) return { ok: false, error: 'El archivo no contiene audio.' };
+  const needsVideo = job.kind === 'video' || job.kind === 'image';
+  if (needsVideo && !info.hasVideo) return { ok: false, error: job.kind === 'image' ? 'No es una imagen válida.' : 'El archivo no contiene video.' };
+  if (!needsVideo && !info.hasAudio) return { ok: false, error: 'El archivo no contiene audio.' };
 
   const outDir = job.outputDir || path.dirname(job.input);
   try {
@@ -90,7 +98,8 @@ async function convert(job, onProgress) {
     return { ok: false, error: `No se puede escribir en la carpeta de destino: ${e.message}` };
   }
   const base = path.basename(job.input, path.extname(job.input));
-  const output = uniqueOutput(outDir, base, job.format);
+  const output = uniqueOutput(outDir, base, outputExt(job));
+  const total = outputDuration(job, info.duration);
 
   const args = [
     '-hide_banner', '-y', '-i', job.input,
@@ -122,11 +131,11 @@ async function convert(job, onProgress) {
         if (i > 0) values[line.slice(0, i)] = line.slice(i + 1);
       }
       const us = Number(values.out_time_us ?? values.out_time_ms);
-      if (!Number.isFinite(us) || !info.duration) return;
+      if (!Number.isFinite(us) || !total) return;
       const seconds = us / 1e6;
-      const percent = Math.min(99.5, (seconds / info.duration) * 100);
+      const percent = Math.min(99.5, (seconds / total) * 100);
       const speed = parseFloat(values.speed) || seconds / Math.max(0.001, (Date.now() - started) / 1000);
-      const eta = speed > 0 ? Math.max(0, (info.duration - seconds) / speed) : null;
+      const eta = speed > 0 ? Math.max(0, (total - seconds) / speed) : null;
       onProgress({ id: job.id, percent, eta, speed });
     });
 

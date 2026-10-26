@@ -2,21 +2,35 @@
 
 const VIDEO_EXTS = ['mov', 'mp4', 'm4v', 'mkv', 'avi', 'webm', 'wmv', 'flv', 'mpg', 'mpeg', 'ts', 'mts', 'm2ts', '3gp', 'ogv'];
 const AUDIO_EXTS = ['mp3', 'wav', 'm4a', 'aac', 'flac', 'ogg', 'opus', 'wma', 'aiff', 'aif'];
+const IMAGE_EXTS = ['jpg', 'jpeg', 'png', 'webp', 'bmp', 'tif', 'tiff', 'gif', 'ico'];
 
 const ACCEPT = {
   video: [...VIDEO_EXTS, 'gif'],
   audio: AUDIO_EXTS,
   extract: VIDEO_EXTS,
+  image: IMAGE_EXTS,
 };
 
+// ext: extensión si difiere del id. rates: únicas frecuencias que admite el códec.
+// maxMono: bitrate máximo (kbps) que el códec acepta en mono.
 const AUDIO_FORMATS = {
   mp3: { codec: ['-c:a', 'libmp3lame', '-id3v2_version', '3'], lossy: true },
   m4a: { codec: ['-c:a', 'aac', '-movflags', '+faststart'], lossy: true },
-  wav: { codec: ['-c:a', 'pcm_s16le'], lossy: false },
-  flac: { codec: ['-c:a', 'flac'], lossy: false },
-  ogg: { codec: ['-c:a', 'libvorbis'], lossy: true },
-  opus: { codec: ['-c:a', 'libopus'], lossy: true },
+  aac: { codec: ['-c:a', 'aac', '-f', 'adts'], lossy: true },
+  wav: { codec: ['-c:a', 'pcm_s16le'] },
+  flac: { codec: ['-c:a', 'flac'] },
+  alac: { ext: 'm4a', codec: ['-c:a', 'alac', '-movflags', '+faststart'] },
+  aiff: { codec: ['-c:a', 'pcm_s16be', '-write_id3v2', '1'] },
+  ogg: { codec: ['-c:a', 'libvorbis'], lossy: true, maxMono: 192 },
+  opus: { codec: ['-c:a', 'libopus'], lossy: true, rates: [48000], maxMono: 256 },
+  wma: { codec: ['-c:a', 'wmav2'], lossy: true },
+  ac3: { codec: ['-c:a', 'ac3'], lossy: true, rates: [48000, 44100, 32000] },
+  // Tono de iPhone: AAC en contenedor iPod, máximo 40 segundos.
+  m4r: { codec: ['-c:a', 'aac', '-t', '40', '-f', 'ipod'], lossy: true, maxSeconds: 40 },
 };
+
+const SAMPLE_RATES = { original: null, '44100': 44100, '48000': 48000 };
+const CHANNELS = { original: null, '2': '2', '1': '1' };
 
 const RESOLUTIONS = { original: null, '1080': 1080, '720': 720, '480': 480 };
 const BITRATES = ['128', '192', '256', '320'];
@@ -106,25 +120,88 @@ function videoArgs(job, info) {
   return args;
 }
 
-function audioArgs(job) {
+// Fotos: lado más largo máximo en píxeles (null = tamaño original).
+const IMAGE_SIZES = { original: null, '3840': 3840, '1920': 1920, '1280': 1280, '800': 800 };
+
+// flatten: el formato no admite transparencia; se pone fondo blanco en vez de negro.
+// image2: muxer de un solo archivo, necesita -update 1.
+const IMAGE_FORMATS = {
+  jpg: { flatten: true, image2: true, codec: (q) => ['-c:v', 'mjpeg', '-q:v', { alta: '2', media: '4', baja: '8' }[q], '-pix_fmt', q === 'alta' ? 'yuvj444p' : 'yuvj420p'] },
+  png: { image2: true, codec: () => ['-c:v', 'png'] },
+  webp: { codec: (q) => ['-c:v', 'libwebp', '-quality', { alta: '90', media: '80', baja: '65' }[q], '-compression_level', '6'] },
+  avif: { flatten: true, codec: (q) => ['-c:v', 'libaom-av1', '-still-picture', '1', '-crf', { alta: '18', media: '28', baja: '38' }[q], '-cpu-used', '6', '-pix_fmt', 'yuv444p'] },
+  tiff: { image2: true, codec: () => ['-c:v', 'tiff', '-compression_algo', 'deflate'] },
+  bmp: { flatten: true, image2: true, codec: () => ['-c:v', 'bmp', '-pix_fmt', 'bgr24'] },
+  gif: { palette: true, codec: () => ['-c:v', 'gif'] },
+  ico: { maxSize: 256, codec: () => ['-c:v', 'png', '-pix_fmt', 'rgba'] },
+};
+
+function imageArgs(job) {
+  const fmt = IMAGE_FORMATS[job.format];
+  const quality = ['alta', 'media', 'baja'].includes(job.quality) ? job.quality : 'alta';
+  const size = Math.min(IMAGE_SIZES[job.size] ?? Infinity, fmt.maxSize ?? Infinity);
+
+  // ffmpeg ya endereza las fotos según su orientación EXIF.
+  const filters = [];
+  if (Number.isFinite(size)) filters.push(`scale=w='min(iw,${size})':h='min(ih,${size})':force_original_aspect_ratio=decrease`);
+  if (fmt.flatten) filters.push('format=rgba,split[a][b];[a]drawbox=c=white:t=fill:replace=1[bg];[bg][b]overlay=format=auto');
+  if (fmt.palette) filters.push('split[a][b];[a]palettegen=reserve_transparent=1[p];[b][p]paletteuse');
+
+  const args = ['-map', '0:v:0', '-frames:v', '1'];
+  if (filters.length) args.push('-vf', filters.join(','));
+  args.push(...fmt.codec(quality), '-map_metadata', '-1');
+  if (fmt.image2) args.push('-update', '1');
+  return args;
+}
+
+function audioArgs(job, info) {
   const fmt = AUDIO_FORMATS[job.format];
-  const bitrate = BITRATES.includes(job.bitrate) ? job.bitrate : '192';
+  const normalize = job.normalize === 'on';
+  const mono = job.channels === '1' || (!CHANNELS[job.channels] && /^(mono|1 channels)$/.test(info.channels));
+  let bitrate = Number(BITRATES.includes(job.bitrate) ? job.bitrate : '192');
+  if (mono && fmt.maxMono) bitrate = Math.min(bitrate, fmt.maxMono);
+
+  // loudnorm trabaja a 192 kHz internamente, así que hay que fijar la frecuencia de salida.
+  // Los formatos con pérdida no pasan de 48 kHz (MP3, OGG y WMA fallan con 96 kHz).
+  let rate = SAMPLE_RATES[job.rate] ?? null;
+  if (!rate && (normalize || (fmt.lossy && info.sampleRate > 48000))) rate = info.sampleRate || 48000;
+  if (rate && fmt.lossy) rate = Math.min(rate, 48000);
+  if (rate && fmt.rates && !fmt.rates.includes(rate)) rate = fmt.rates[0];
+
   const args = ['-map', '0:a:0', '-vn', ...fmt.codec];
   if (fmt.lossy) args.push('-b:a', `${bitrate}k`);
+  if (CHANNELS[job.channels]) args.push('-ac', CHANNELS[job.channels]);
+  if (rate) args.push('-ar', String(rate));
+  // Volumen estándar de podcasts y streaming (-16 LUFS).
+  if (normalize) args.push('-af', 'loudnorm=I=-16:TP=-1.5:LRA=11');
   args.push('-map_metadata', '0');
   return args;
+}
+
+const isAudioJob = (job) => job.kind === 'audio' || job.kind === 'extract';
+
+function outputExt(job) {
+  return (isAudioJob(job) && AUDIO_FORMATS[job.format].ext) || job.format;
+}
+
+// Duración real del archivo de salida, para calcular el progreso.
+function outputDuration(job, duration) {
+  const max = isAudioJob(job) && AUDIO_FORMATS[job.format].maxSeconds;
+  return max ? Math.min(duration, max) : duration;
 }
 
 function validateJob(job) {
   if (!job || typeof job.input !== 'string') return 'Archivo de entrada inválido.';
   if (!ACCEPT[job.kind]) return 'Tipo de conversión desconocido.';
-  if (job.kind === 'video' && !Object.hasOwn(VIDEO_FORMATS, job.format)) return 'Formato de video no soportado.';
-  if (job.kind !== 'video' && !Object.hasOwn(AUDIO_FORMATS, job.format)) return 'Formato de audio no soportado.';
+  const formats = { video: VIDEO_FORMATS, image: IMAGE_FORMATS }[job.kind] ?? AUDIO_FORMATS;
+  if (!Object.hasOwn(formats, job.format)) return 'Formato de salida no soportado.';
   return null;
 }
 
 function buildArgs(job, info) {
-  return job.kind === 'video' ? videoArgs(job, info) : audioArgs(job);
+  if (job.kind === 'video') return videoArgs(job, info);
+  if (job.kind === 'image') return imageArgs(job);
+  return audioArgs(job, info);
 }
 
-module.exports = { ACCEPT, buildArgs, validateJob };
+module.exports = { ACCEPT, buildArgs, validateJob, outputExt, outputDuration };

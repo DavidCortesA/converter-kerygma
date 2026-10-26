@@ -5,13 +5,21 @@ const api = window.kerygma;
 /* ---------- Configuración de pestañas ---------- */
 
 const AUDIO_FORMATS = [
-  { id: 'mp3', label: 'MP3', hint: 'Universal', lossy: true },
-  { id: 'm4a', label: 'M4A', hint: 'AAC · Apple', lossy: true },
-  { id: 'wav', label: 'WAV', hint: 'Sin compresión', lossy: false },
-  { id: 'flac', label: 'FLAC', hint: 'Sin pérdida', lossy: false },
-  { id: 'ogg', label: 'OGG', hint: 'Vorbis', lossy: true },
-  { id: 'opus', label: 'OPUS', hint: 'Voz · web', lossy: true },
+  { id: 'mp3', label: 'MP3', lossy: true, desc: 'El formato de audio universal: funciona en cualquier reproductor, auto o celular.' },
+  { id: 'm4a', label: 'M4A', lossy: true, desc: 'AAC en contenedor MP4. Mejor calidad que MP3 al mismo tamaño; ideal para Apple.' },
+  { id: 'aac', label: 'AAC', lossy: true, desc: 'AAC sin contenedor. Para radios por internet y algunos equipos de audio.' },
+  { id: 'wav', label: 'WAV', lossy: false, desc: 'Sin compresión. Para edición de audio y CDs; los archivos son grandes.' },
+  { id: 'flac', label: 'FLAC', lossy: false, desc: 'Sin pérdida y bastante más liviano que WAV. Ideal para archivar música.' },
+  { id: 'alac', label: 'ALAC', lossy: false, desc: 'Sin pérdida de Apple (se guarda como .m4a). Para la app Música e iTunes.' },
+  { id: 'aiff', label: 'AIFF', lossy: false, desc: 'Sin compresión, el equivalente a WAV en Mac. Para Logic y GarageBand.' },
+  { id: 'ogg', label: 'OGG', lossy: true, desc: 'Vorbis: libre y liviano. Usado en videojuegos y Linux.' },
+  { id: 'opus', label: 'OPUS', lossy: true, desc: 'El más eficiente: excelente para voz incluso a 128 kbps. Siempre a 48 kHz.' },
+  { id: 'wma', label: 'WMA', lossy: true, desc: 'Windows Media Audio. Para equipos y programas Windows antiguos.' },
+  { id: 'ac3', label: 'AC3', lossy: true, desc: 'Dolby Digital. Para DVD y sistemas de cine en casa.' },
+  { id: 'm4r', label: 'M4R', lossy: true, desc: 'Tono de llamada para iPhone. Se recorta a los primeros 40 segundos.' },
 ];
+
+const AUDIO_DEFAULTS = { format: 'mp3', bitrate: '192', channels: 'original', rate: 'original', normalize: 'off', dest: 'same' };
 
 const TABS = {
   video: {
@@ -43,8 +51,9 @@ const TABS = {
     subtitle: 'Pasa tus audios al formato que necesites.',
     noun: 'audios',
     needs: 'audio',
+    compact: true,
     formats: AUDIO_FORMATS,
-    defaults: { format: 'mp3', bitrate: '192', dest: 'same' },
+    defaults: AUDIO_DEFAULTS,
   },
   extract: {
     label: 'Video → Audio',
@@ -52,8 +61,29 @@ const TABS = {
     subtitle: 'Saca la pista de audio de tus videos: mensajes, podcasts, música.',
     noun: 'videos',
     needs: 'audio',
+    compact: true,
     formats: AUDIO_FORMATS,
-    defaults: { format: 'mp3', bitrate: '192', dest: 'same' },
+    defaults: AUDIO_DEFAULTS,
+  },
+  image: {
+    label: 'Foto',
+    title: 'Convertir fotos',
+    subtitle: 'Cambia el formato y el tamaño de tus imágenes.',
+    noun: 'fotos',
+    pick: 'elegirlas',
+    needs: 'video',
+    compact: true,
+    formats: [
+      { id: 'jpg', label: 'JPG', lossy: true, desc: 'El formato de foto universal. Sin transparencia: el fondo transparente pasa a blanco.' },
+      { id: 'png', label: 'PNG', lossy: false, desc: 'Sin pérdida y con transparencia. Ideal para logos, capturas y gráficos.' },
+      { id: 'webp', label: 'WEBP', lossy: true, desc: 'Mucho más liviano que JPG con la misma calidad, y admite transparencia. Ideal para web.' },
+      { id: 'avif', label: 'AVIF', lossy: true, desc: 'El formato más liviano. Compatible con navegadores modernos; codificar tarda un poco más.' },
+      { id: 'tiff', label: 'TIFF', lossy: false, desc: 'Sin pérdida, para imprenta, escaneos y edición profesional.' },
+      { id: 'bmp', label: 'BMP', lossy: false, desc: 'Mapa de bits sin compresión. Solo para programas antiguos; los archivos son grandes.' },
+      { id: 'gif', label: 'GIF', lossy: false, desc: 'Máximo 256 colores. Para gráficos simples; para fotos conviene JPG o WEBP.' },
+      { id: 'ico', label: 'ICO', lossy: false, desc: 'Ícono de Windows y favicon de sitios web. Se reduce a un máximo de 256 px.' },
+    ],
+    defaults: { format: 'jpg', quality: 'alta', size: 'original', dest: 'same' },
   },
 };
 
@@ -139,6 +169,18 @@ function segTemplate(setting, options) {
   </div>`;
 }
 
+// Opciones secundarias plegadas; el resumen muestra lo que se cambió.
+function moreTemplate(inner) {
+  return `<details class="more">
+    <summary>
+      <span class="group-label">Más opciones</span>
+      <span class="more-summary"></span>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+    </summary>
+    <div class="more-body">${inner}</div>
+  </details>`;
+}
+
 function settingsTemplate(key, cfg) {
   const cols = cfg.compact ? 'cols-4 is-compact' : 'cols-3';
   const formatGroup = `
@@ -163,18 +205,48 @@ function settingsTemplate(key, cfg) {
       <div class="group-label">Calidad</div>
       ${segTemplate('quality', [['alta', 'Alta'], ['media', 'Media'], ['baja', 'Ligera']])}
     </div>
-    <div class="group">
-      <div class="group-label">Resolución</div>
-      ${segTemplate('resolution', [['original', 'Original'], ['1080', '1080p'], ['720', '720p'], ['480', '480p']])}
-      <p class="group-hint" data-hint="video"></p>
-    </div>`;
+    ${moreTemplate(`
+      <div class="group">
+        <div class="group-label">Resolución</div>
+        ${segTemplate('resolution', [['original', 'Original'], ['1080', '1080p'], ['720', '720p'], ['480', '480p']])}
+        <p class="group-hint" data-hint="video"></p>
+      </div>`)}`;
 
   const audioGroups = `
     <div class="group" data-group="bitrate">
       <div class="group-label">Calidad <em>kbps</em></div>
       ${segTemplate('bitrate', [['128', '128'], ['192', '192'], ['256', '256'], ['320', '320']])}
       <p class="group-hint" data-hint="bitrate"></p>
+    </div>
+    <div class="group">
+      <div class="group-label">Normalizar volumen</div>
+      ${segTemplate('normalize', [['off', 'No'], ['on', 'Sí, a −16 LUFS']])}
+      <p class="group-hint" data-hint="normalize"></p>
+    </div>
+    ${moreTemplate(`
+      <div class="group">
+        <div class="group-label">Canales</div>
+        ${segTemplate('channels', [['original', 'Original'], ['2', 'Estéreo'], ['1', 'Mono']])}
+      </div>
+      <div class="group">
+        <div class="group-label">Frecuencia</div>
+        ${segTemplate('rate', [['original', 'Original'], ['44100', '44.1 kHz'], ['48000', '48 kHz']])}
+        <p class="group-hint" data-hint="rate"></p>
+      </div>`)}`;
+
+  const imageGroups = `
+    <div class="group" data-group="quality">
+      <div class="group-label">Calidad</div>
+      ${segTemplate('quality', [['alta', 'Alta'], ['media', 'Media'], ['baja', 'Ligera']])}
+      <p class="group-hint" data-hint="quality"></p>
+    </div>
+    <div class="group">
+      <div class="group-label">Tamaño <em>lado más largo</em></div>
+      ${segTemplate('size', [['original', 'Original'], ['3840', '4K'], ['1920', '1920'], ['1280', '1280'], ['800', '800']])}
+      <p class="group-hint" data-hint="size"></p>
     </div>`;
+
+  const groups = { video: videoGroups, image: imageGroups }[key] ?? audioGroups;
 
   const destGroup = `
     <div class="group">
@@ -185,7 +257,7 @@ function settingsTemplate(key, cfg) {
       </button>
     </div>`;
 
-  return formatGroup + (key === 'video' ? videoGroups : audioGroups) + destGroup;
+  return formatGroup + groups + destGroup;
 }
 
 function panelTemplate(key) {
@@ -209,7 +281,7 @@ function panelTemplate(key) {
         <span class="dz-icon">${ICON.upload}</span>
         <span class="dz-text">
           <strong>Arrastra tus ${cfg.noun} aquí</strong>
-          <span>o <u>haz clic para elegirlos</u> de tu equipo</span>
+          <span>o <u>haz clic para ${cfg.pick || 'elegirlos'}</u> de tu equipo</span>
         </span>
         <span class="dz-formats">${exts.filter((e) => e !== 'aif').map((e) => `<i>${e}</i>`).join('')}</span>
       </button>
@@ -270,7 +342,9 @@ function itemTemplate(key, item) {
 
   return `
   <li class="item is-${item.status}" data-id="${item.id}">
-    <div class="item-thumb">${esc(item.ext)}</div>
+    <div class="item-thumb">${key === 'image' && item.url && item.status !== 'invalid'
+      ? `<img src="${esc(item.url)}" alt="" loading="lazy" draggable="false">`
+      : esc(item.ext)}</div>
     <div class="item-main">
       <div class="item-name" title="${esc(item.path)}">${esc(item.name)}</div>
       <div class="item-meta">${meta}</div>
@@ -297,6 +371,13 @@ function renderSettings(key) {
     }
   }
 
+  for (const more of $$('.more', root)) {
+    $('.more-summary', more).textContent = $$('[data-setting]', more)
+      .filter((g) => s[g.dataset.setting] !== TABS[key].defaults[g.dataset.setting])
+      .map((g) => $('.is-selected', g)?.textContent)
+      .join(' · ');
+  }
+
   if (key === 'video') {
     const fmt = TABS.video.formats.find((f) => f.id === s.format);
     const gif = s.format === 'gif';
@@ -316,14 +397,35 @@ function renderSettings(key) {
       : s.resolution !== 'original'
         ? 'Cambiar la resolución recodifica el video con la calidad elegida.'
         : '';
+  } else if (key === 'image') {
+    const fmt = TABS.image.formats.find((f) => f.id === s.format);
+    $('[data-hint="format"]', root).textContent = fmt.desc;
+
+    const quality = $('[data-group="quality"]', root);
+    quality.classList.toggle('is-disabled', !fmt.lossy);
+    $$('[data-value]', quality).forEach((b) => { b.disabled = !fmt.lossy; });
+    $('[data-hint="quality"]', root).textContent = fmt.lossy
+      ? 'Alta es casi idéntica al original; Ligera pesa mucho menos.'
+      : `${fmt.label} guarda la imagen sin pérdida; no usa nivel de calidad.`;
+
+    $('[data-hint="size"]', root).textContent = s.format === 'ico'
+      ? 'Los íconos se reducen a un máximo de 256 px.'
+      : s.size === 'original' ? '' : 'Las fotos más pequeñas que este tamaño no se agrandan.';
   } else {
     const fmt = AUDIO_FORMATS.find((f) => f.id === s.format);
     const group = $('[data-group="bitrate"]', root);
     group.classList.toggle('is-disabled', !fmt.lossy);
     $$('[data-value]', group).forEach((b) => { b.disabled = !fmt.lossy; });
+    $('[data-hint="format"]', root).textContent = fmt.desc;
     $('[data-hint="bitrate"]', root).textContent = fmt.lossy
-      ? '192 kbps es ideal para la mayoría de usos; 320 para música exigente.'
+      ? '192 sirve para casi todo; 320 para música exigente.'
       : `${fmt.label} conserva toda la calidad del original; no usa bitrate.`;
+    $('[data-hint="rate"]', root).textContent = s.format === 'opus'
+      ? 'Opus siempre trabaja a 48 kHz.'
+      : s.format === 'ac3' && s.rate === 'original' ? 'AC3 usa 32, 44.1 o 48 kHz; se ajusta si hace falta.' : '';
+    $('[data-hint="normalize"]', root).textContent = s.normalize === 'on'
+      ? 'Estándar de podcasts: lo bajito se oye claro y lo fuerte no satura.'
+      : '';
   }
 
   const chip = $('.folder-chip', root);
@@ -459,13 +561,14 @@ async function addFiles(key, paths) {
   const need = TABS[key].needs === 'video' ? 'hasVideo' : 'hasAudio';
   infos.forEach((info, idx) => {
     const item = fresh[idx];
-    Object.assign(item, { size: info.size, duration: info.duration, resolution: info.resolution });
+    Object.assign(item, { size: info.size, duration: info.duration, resolution: info.resolution, url: info.url });
     if (info.error) {
       item.status = 'invalid';
       item.error = info.error;
     } else if (!info[need]) {
       item.status = 'invalid';
-      item.error = need === 'hasVideo' ? 'Este archivo no tiene pista de video.' : 'Este archivo no tiene pista de audio.';
+      item.error = key === 'image' ? 'No es una imagen válida.'
+        : need === 'hasVideo' ? 'Este archivo no tiene pista de video.' : 'Este archivo no tiene pista de audio.';
     } else {
       item.status = 'pending';
     }
@@ -554,7 +657,7 @@ function announce(key, batch, stopped) {
   if (done) {
     const msg = `${plural(done, 'archivo convertido', 'archivos convertidos')}${failed ? ` · ${failed} con error` : ''}`;
     toast(msg, { type: 'success', action: { label: 'Mostrar', run: () => api.reveal(lastOutput) } });
-    if (!document.hasFocus()) new Notification('Converter Kerygma', { body: msg });
+    if (!document.hasFocus()) new Notification('Kerygma Converter', { body: msg });
   } else if (failed) {
     toast(`No se pudo convertir ${plural(failed, 'archivo', 'archivos')}. Revisa el detalle en la lista.`, { type: 'error' });
   } else if (stopped) {

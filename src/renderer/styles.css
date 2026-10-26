@@ -390,6 +390,13 @@ body.is-dragging .panel:not([hidden]) .dropzone { transform: scale(1.008); }
   text-transform: uppercase;
 }
 
+.item-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: inherit;
+}
+
 .item.is-running .item-thumb { background: var(--accent-soft); color: var(--accent); }
 .item.is-done .item-thumb { background: var(--success-soft); color: var(--success); }
 .item.is-error .item-thumb,
@@ -508,7 +515,7 @@ body.is-dragging .panel:not([hidden]) .dropzone { transform: scale(1.008); }
   padding: 18px 20px;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 16px;
 }
 
 .settings-body::-webkit-scrollbar { width: 8px; }
@@ -544,6 +551,44 @@ body.is-dragging .panel:not([hidden]) .dropzone { transform: scale(1.008); }
 }
 
 .group-hint:empty { display: none; }
+
+.more summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  list-style: none;
+  cursor: pointer;
+}
+
+.more summary::-webkit-details-marker { display: none; }
+.more summary .group-label { margin: 0; transition: color 0.15s; }
+.more summary:hover .group-label { color: var(--text-2); }
+
+.more-summary {
+  flex: 1;
+  overflow: hidden;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.more summary svg {
+  width: 16px;
+  height: 16px;
+  color: var(--text-3);
+  transition: transform 0.25s var(--ease);
+}
+
+.more[open] summary svg { transform: rotate(180deg); }
+
+.more-body {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding-top: 14px;
+}
 
 .group.is-disabled .seg { opacity: 0.45; }
 .group.is-disabled .seg button { cursor: default; }

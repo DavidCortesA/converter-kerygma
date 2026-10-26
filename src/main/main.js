@@ -20,10 +20,12 @@ function overlayColors() {
 function createWindow() {
   win = new BrowserWindow({
     width: 1120,
-    height: 780,
+    height: 820,
     minWidth: 880,
     minHeight: 600,
-    title: 'Converter Kerygma',
+    title: 'Kerygma Converter',
+    // En el paquete, Windows toma el ícono del .exe; esto cubre el modo desarrollo.
+    icon: path.join(__dirname, '..', 'assets', 'icon.png'),
     backgroundColor: overlayColors().color,
     show: false,
     titleBarStyle: 'hidden',
@@ -50,7 +52,7 @@ nativeTheme.on('updated', () => {
   if (win && !isMac) win.setTitleBarOverlay({ ...overlayColors(), height: 52 });
 });
 
-const FILTER_NAMES = { video: 'Videos', audio: 'Audio', extract: 'Videos' };
+const FILTER_NAMES = { video: 'Videos', audio: 'Audio', extract: 'Videos', image: 'Imágenes' };
 
 ipcMain.handle('app:config', () => ({ platform: process.platform, accept: ACCEPT, version: app.getVersion() }));
 

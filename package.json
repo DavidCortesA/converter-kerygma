@@ -1,8 +1,8 @@
 {
   "name": "converter-kerygma",
-  "productName": "Converter Kerygma",
-  "version": "0.1.0",
-  "description": "Convertidor de video y audio para Mac y Windows: MOV ⇄ MP4, audio entre formatos y extracción de audio desde video.",
+  "productName": "Kerygma Converter",
+  "version": "0.2.0",
+  "description": "Convertidor de video, audio y fotos para Mac y Windows que funciona sin internet.",
   "main": "src/main/main.js",
   "license": "MIT",
   "private": true,
@@ -21,8 +21,8 @@
   },
   "build": {
     "appId": "com.kerygma.converter",
-    "productName": "Converter Kerygma",
-    "artifactName": "${name}-${version}-${os}-${arch}.${ext}",
+    "productName": "Kerygma Converter",
+    "artifactName": "Kerygma-Converter-${version}-${os}-${arch}.${ext}",
     "directories": {
       "output": "dist",
       "buildResources": "build"
@@ -36,23 +36,30 @@
     ],
     "mac": {
       "target": [
-        "dmg",
-        "zip"
+        "dmg"
       ],
+      "icon": "build/icon-mac.png",
       "category": "public.app-category.video"
+    },
+    "dmg": {
+      "title": "Kerygma Converter",
+      "artifactName": "Kerygma-Converter-${version}-Mac-${arch}.${ext}"
     },
     "win": {
       "target": [
         "nsis",
         "portable"
-      ]
+      ],
+      "icon": "build/icon.png"
     },
     "nsis": {
       "oneClick": false,
-      "allowToChangeInstallationDirectory": true
+      "allowToChangeInstallationDirectory": true,
+      "shortcutName": "Kerygma Converter",
+      "artifactName": "Kerygma-Converter-${version}-Windows-Instalador.${ext}"
     },
     "portable": {
-      "artifactName": "${name}-${version}-win-portable.exe"
+      "artifactName": "Kerygma-Converter-${version}-Windows-Portable.${ext}"
     }
   }
 }
