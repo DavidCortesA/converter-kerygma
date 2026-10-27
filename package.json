@@ -1,7 +1,7 @@
 {
   "name": "converter-kerygma",
   "productName": "Kerygma Converter",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "description": "Convertidor de video, audio y fotos para Mac y Windows que funciona sin internet.",
   "main": "src/main/main.js",
   "license": "MIT",

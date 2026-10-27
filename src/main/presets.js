@@ -25,8 +25,8 @@ const AUDIO_FORMATS = {
   opus: { codec: ['-c:a', 'libopus'], lossy: true, rates: [48000], maxMono: 256 },
   wma: { codec: ['-c:a', 'wmav2'], lossy: true },
   ac3: { codec: ['-c:a', 'ac3'], lossy: true, rates: [48000, 44100, 32000] },
-  // Tono de iPhone: AAC en contenedor iPod, máximo 40 segundos.
-  m4r: { codec: ['-c:a', 'aac', '-t', '40', '-f', 'ipod'], lossy: true, maxSeconds: 40 },
+  // Tono de iPhone: AAC en contenedor iPod, máximo 40 segundos (el corte lo aplica outputWindow).
+  m4r: { codec: ['-c:a', 'aac', '-f', 'ipod'], lossy: true, maxSeconds: 40 },
 };
 
 const SAMPLE_RATES = { original: null, '44100': 44100, '48000': 48000 };
@@ -87,7 +87,73 @@ function gifArgs(job, scale) {
   return ['-map', '0:v:0', '-vf', filter, '-an', '-loop', '0'];
 }
 
-function videoArgs(job, info) {
+// ---------- Presets por destino (siempre MP4 H.264 + AAC) ----------
+// limitMB: tamaño máximo del archivo; el bitrate se calcula con la duración y la resolución
+// baja por la escalera [kbps mínimos de video, lado corto] hasta que la calidad sea razonable.
+// maxK: por encima de este bitrate no se gana calidad visible; se usa CRF con ese techo.
+const VIDEO_PRESETS = {
+  whatsapp: { limitMB: 16, audioK: 96, maxK: 2000, ladder: [[1200, 720], [500, 480], [0, 360]] },
+  email: { limitMB: 20, audioK: 128, maxK: 4000, ladder: [[2500, 1080], [1200, 720], [500, 480], [0, 360]] },
+  youtube: { crf: 18, audioK: 384, rate: 48000 },
+  instagram: { crf: 20, audioK: 128, rate: 44100, shortSide: 1080, maxrateK: 8000 },
+};
+const MIN_VIDEO_K = 100; // por debajo el video no se ve: mejor pedir que se recorte
+const SIZE_MARGIN = 0.92; // x264 en una pasada puede pasarse unos puntos del objetivo
+const EVEN_SIZE = 'scale=trunc(iw/2)*2:trunc(ih/2)*2';
+
+// Limita el lado corto (sirve igual para videos horizontales y verticales de celular).
+const shortSideScale = (px) => `scale='if(gte(iw,ih),-2,min(${px},trunc(iw/2)*2))':'if(gte(iw,ih),min(${px},trunc(ih/2)*2),-2)'`;
+
+class JobError extends Error {
+  constructor(code, detail) {
+    super(code);
+    this.code = code;
+    this.detail = detail;
+  }
+}
+
+const presetLimitBytes = (job) => {
+  const p = job.kind === 'video' && VIDEO_PRESETS[job.preset];
+  return p && p.limitMB ? p.limitMB * 1024 * 1024 : null;
+};
+
+// attempt > 0 cuando el intento anterior se pasó del tamaño: cada reintento usa un 15 % menos.
+function presetArgs(job, info, attempt) {
+  const p = VIDEO_PRESETS[job.preset];
+  const args = ['-map', '0:v:0', '-map', '0:a:0?', '-c:v', 'libx264', '-preset', 'medium', '-profile:v', 'high', '-pix_fmt', 'yuv420p'];
+  const audioK = info.hasAudio ? p.audioK : 0;
+  let filter = EVEN_SIZE;
+
+  if (p.limitMB) {
+    const seconds = Math.max(info.duration, 1);
+    const budgetBits = p.limitMB * 1024 * 1024 * 8 * SIZE_MARGIN * 0.85 ** attempt;
+    const videoK = Math.floor(budgetBits / seconds / 1000 - audioK - 8);
+    if (videoK < MIN_VIDEO_K) {
+      // Detalle: segundos que caben aproximadamente con la calidad mínima.
+      throw new JobError('TOO_LONG', Math.floor(budgetBits / ((MIN_VIDEO_K + audioK + 8) * 1000)));
+    }
+    filter = shortSideScale(p.ladder.find(([k]) => videoK >= k)[1]);
+    // Calidad constante con techo: un video simple sale liviano (no "llena" el límite) y uno
+    // complejo queda limitado por maxrate. Si aun así se pasa, convert() reintenta con menos.
+    const capK = Math.min(videoK, p.maxK);
+    args.push('-crf', '23', '-maxrate', `${capK}k`, '-bufsize', `${capK * 2}k`, '-fpsmax', '30');
+  } else {
+    args.push('-crf', String(p.crf));
+    if (p.shortSide) filter = shortSideScale(p.shortSide);
+    if (p.maxrateK) args.push('-maxrate', `${p.maxrateK}k`, '-bufsize', `${p.maxrateK * 2}k`, '-fpsmax', '30');
+  }
+
+  args.push('-vf', filter);
+  if (info.hasAudio) {
+    args.push('-c:a', 'aac', '-b:a', `${p.audioK}k`);
+    if (p.rate) args.push('-ar', String(p.rate));
+  }
+  args.push('-map_metadata', '0', '-movflags', '+faststart');
+  return args;
+}
+
+function videoArgs(job, info, attempt) {
+  if (VIDEO_PRESETS[job.preset]) return presetArgs(job, info, attempt);
   const fmt = VIDEO_FORMATS[job.format];
   const scale = RESOLUTIONS[job.resolution] ?? null;
   const quality = ['alta', 'media', 'baja'].includes(job.quality) ? job.quality : 'alta';
@@ -181,26 +247,40 @@ function audioArgs(job, info) {
 const isAudioJob = (job) => job.kind === 'audio' || job.kind === 'extract';
 
 function outputExt(job) {
+  if (job.kind === 'video' && VIDEO_PRESETS[job.preset]) return 'mp4';
   return (isAudioJob(job) && AUDIO_FORMATS[job.format].ext) || job.format;
 }
 
-// Duración real del archivo de salida, para calcular el progreso.
-function outputDuration(job, duration) {
+// Tramo del original que se convierte: el recorte del usuario y, en M4R, como máximo 40 s.
+// Devuelve { start, length } en segundos; length es null si llega hasta el final.
+function outputWindow(job, duration) {
+  let start = 0;
+  let end = duration || Infinity;
+  const trim = job.kind !== 'image' && job.trim;
+  if (trim && Number.isFinite(trim.start) && Number.isFinite(trim.end)) {
+    start = Math.max(0, Math.min(trim.start, end));
+    end = Math.max(start, Math.min(trim.end, end));
+    if (end - start < 0.1) { start = 0; end = duration || Infinity; }
+  }
   const max = isAudioJob(job) && AUDIO_FORMATS[job.format].maxSeconds;
-  return max ? Math.min(duration, max) : duration;
+  if (max) end = Math.min(end, start + max);
+  const toEnd = !Number.isFinite(end) || end >= (duration || Infinity) - 0.01;
+  return { start, length: toEnd ? null : end - start };
 }
 
 function validateJob(job) {
   if (!job || typeof job.input !== 'string' || !ACCEPT[job.kind]) return 'INVALID_JOB';
   const formats = { video: VIDEO_FORMATS, image: IMAGE_FORMATS }[job.kind] ?? AUDIO_FORMATS;
   if (!Object.hasOwn(formats, job.format)) return 'UNSUPPORTED_FORMAT';
+  if (job.preset && job.preset !== 'custom' && !Object.hasOwn(VIDEO_PRESETS, job.preset)) return 'UNSUPPORTED_FORMAT';
+  if (job.trim != null && (typeof job.trim !== 'object' || !(job.trim.end > job.trim.start))) return 'INVALID_JOB';
   return null;
 }
 
-function buildArgs(job, info) {
-  if (job.kind === 'video') return videoArgs(job, info);
+function buildArgs(job, info, attempt = 0) {
+  if (job.kind === 'video') return videoArgs(job, info, attempt);
   if (job.kind === 'image') return imageArgs(job);
   return audioArgs(job, info);
 }
 
-module.exports = { ACCEPT, buildArgs, validateJob, outputExt, outputDuration };
+module.exports = { ACCEPT, JobError, buildArgs, validateJob, outputExt, outputWindow, presetLimitBytes };

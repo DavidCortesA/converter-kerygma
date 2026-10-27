@@ -6,7 +6,7 @@ Convertidor de video, audio y fotos de escritorio para **Mac y Windows**. Funcio
 
 | Pestaña | Qué hace | Entradas | Salidas |
 |---|---|---|---|
-| **Video** | De un formato de video a otro | MOV, MP4, M4V, MKV, AVI, WEBM, WMV, FLV, MPG, TS, MTS, M2TS, 3GP, OGV, GIF | MP4, MOV, MKV, WEBM, AVI, M4V, WMV, MPG, TS, FLV, 3GP, GIF |
+| **Video** | De un formato de video a otro, o listo para WhatsApp, correo, YouTube o Instagram | MOV, MP4, M4V, MKV, AVI, WEBM, WMV, FLV, MPG, TS, MTS, M2TS, 3GP, OGV, GIF | MP4, MOV, MKV, WEBM, AVI, M4V, WMV, MPG, TS, FLV, 3GP, GIF |
 | **Audio** | De un formato de audio a otro | MP3, WAV, M4A, AAC, FLAC, OGG, OPUS, WMA, AIFF | MP3, M4A, AAC, WAV, FLAC, ALAC, AIFF, OGG, OPUS, WMA, AC3, M4R |
 | **Video → Audio** | Extrae la pista de audio | Los mismos videos (salvo GIF) | Los mismos 12 formatos de audio |
 | **Foto** | De un formato de imagen a otro | JPG, PNG, WEBP, BMP, TIFF, GIF, ICO | JPG, PNG, WEBP, AVIF, TIFF, BMP, GIF, ICO |
@@ -25,6 +25,33 @@ La app sigue el tema claro u oscuro del sistema:
 |---|---|
 | ![Pestaña Video en tema claro](docs/screenshots/light-video.png) | ![Pestaña Audio en tema claro](docs/screenshots/light-audio.png) |
 | ![Pestaña Foto en tema claro](docs/screenshots/light-foto.png) | ![Pantalla inicial sin archivos](docs/screenshots/dark-vacio.png) |
+
+## Recortar ✂
+
+En las pestañas **Video**, **Audio** y **Video → Audio**, el botón de tijeras de cada archivo abre el editor de recorte:
+
+- Arrastra los dos controles de la barra o escribe el **inicio** y el **fin** (`1:15`, `1:15.5` o `0:01:15`).
+- La vista previa muestra el fotograma de cada extremo, y **Reproducir selección** reproduce solo ese tramo.
+- La fila del archivo muestra el tramo elegido (✂ 0:30–1:15.5); **Quitar recorte** vuelve al archivo completo.
+
+Al recodificar, el corte es exacto. En modo **Rápido** (sin recodificar) es casi instantáneo, pero cae en el fotograma clave más cercano y puede variar 1–2 segundos.
+
+| Tema oscuro | Tema claro |
+|---|---|
+| ![Editor de recorte en tema oscuro](docs/screenshots/dark-recorte.png) | ![Editor de recorte en tema claro](docs/screenshots/light-recorte.png) |
+
+## Destinos
+
+En la pestaña **Video**, **Destino** prepara el archivo para donde lo vas a usar, sin elegir formatos ni códecs. **Manual** deja todas las opciones a mano.
+
+| Destino | Resultado |
+|---|---|
+| **WhatsApp** | MP4 de **menos de 16 MB**. El bitrate se calcula con la duración, y la resolución baja sola si hace falta (720p → 480p → 360p). |
+| **Correo** | MP4 de **menos de 20 MB**, el límite de Gmail y Outlook (hasta 1080p). |
+| **YouTube** | H.264 en alta calidad y audio AAC de 384 kbps a 48 kHz, como recomienda YouTube. Conserva la resolución, incluso 4K. |
+| **Instagram** | H.264 de hasta 1080 px por el lado corto y 30 fps, para Reels y publicaciones (sirve igual para videos verticales). |
+
+En WhatsApp y Correo, el bitrate calculado es un **techo**: un video simple sale mucho más liviano que el límite, y uno con mucho movimiento nunca lo supera. Si el resultado aun así se pasa, la app lo vuelve a intentar con menos bitrate. Si el video es demasiado largo para caber con una calidad aceptable, avisa cuánto cabe (unos 10 minutos en WhatsApp): recórtalo con ✂ o elige otro destino.
 
 ## Configuración
 
@@ -50,6 +77,7 @@ Las preferencias se guardan en `settings.json`, dentro de la carpeta de datos de
 ## Funciones
 
 - Arrastra y suelta varios archivos a la vez (o `Ctrl/⌘ + O`).
+- [Recorta](#recortar-) video y audio, y prepara videos para [WhatsApp, correo, YouTube o Instagram](#destinos).
 - **Modo rápido** en video: copia la imagen y el audio sin recodificar cuando el formato de destino los admite (segundos, sin pérdida). Si no se puede, recodifica automáticamente solo lo necesario.
 - **Máxima compatibilidad**: recodifica siempre al códec estándar de cada formato, con calidad configurable y resolución en *Más opciones*:
 
@@ -101,8 +129,8 @@ Los archivos quedan en `dist/`:
 Para obtener todos sin tener una Mac, actualiza `version` en `package.json`, y luego crea y sube un tag con esa versión:
 
 ```bash
-git tag v0.2.2
-git push origin v0.2.2
+git tag v0.3.0
+git push origin v0.3.0
 ```
 
 El workflow de [`.github/workflows/build.yml`](.github/workflows/build.yml) compila las cuatro versiones y crea una **Release** en GitHub donde cada instalador se descarga por separado. Si lanzas el workflow a mano desde **Actions**, cada versión queda como un artifact independiente.

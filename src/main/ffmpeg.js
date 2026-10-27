@@ -4,7 +4,7 @@ const { spawn } = require('node:child_process');
 const fs = require('node:fs');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
-const { buildArgs, validateJob, outputExt, outputDuration } = require('./presets');
+const { JobError, buildArgs, validateJob, outputExt, outputWindow, presetLimitBytes } = require('./presets');
 
 // Dentro del paquete, el binario vive en app.asar.unpacked (ver "asarUnpack" en package.json).
 const ffmpegPath = require('ffmpeg-static').replace(/app\.asar(?!\.unpacked)/, 'app.asar.unpacked');
@@ -116,19 +116,72 @@ async function convert(job, onProgress, { overwrite = false } = {}) {
   // Se escribe en un temporal con la misma extensión (ffmpeg elige el formato por ella) y se
   // renombra al terminar: un fallo nunca deja un archivo a medias ni pisa uno existente.
   const temp = path.join(outDir, `.${base}.${job.id}.part.${ext}`);
-  const total = outputDuration(job, info.duration);
 
-  const args = [
-    '-hide_banner', '-y', '-i', job.input,
-    ...buildArgs(job, info),
-    '-progress', 'pipe:1', '-nostats',
-    temp,
-  ];
+  // -ss antes de -i busca rápido; al recodificar el corte es exacto, al copiar cae en un fotograma clave.
+  const { start, length } = outputWindow(job, info.duration);
+  const total = length ?? Math.max(0, info.duration - start);
+  const seek = start > 0 ? ['-ss', start.toFixed(3)] : [];
+  const cut = length != null ? ['-t', length.toFixed(3)] : [];
 
+  // Destinos con tamaño máximo: si el resultado se pasa, se reintenta con menos bitrate.
+  const limit = presetLimitBytes(job);
+  const attempts = limit ? 3 : 1;
+  const entry = { proc: null, output, canceled: false };
+  running.set(job.id, entry);
+
+  for (let attempt = 0; attempt < attempts; attempt++) {
+    let codecArgs;
+    try {
+      codecArgs = buildArgs(job, { ...info, duration: total }, attempt);
+    } catch (e) {
+      running.delete(job.id);
+      if (e instanceof JobError) return fail(e.code, e.detail);
+      throw e;
+    }
+    const args = [
+      '-hide_banner', '-y', ...seek, '-i', job.input, ...cut,
+      ...codecArgs,
+      '-progress', 'pipe:1', '-nostats',
+      temp,
+    ];
+    const result = await runFfmpeg(args, entry, job.id, total, onProgress);
+
+    if (entry.canceled) {
+      running.delete(job.id);
+      safeUnlink(temp);
+      return { ok: false, canceled: true };
+    }
+    if (result.error) {
+      running.delete(job.id);
+      safeUnlink(temp);
+      return fail('FFMPEG', result.error);
+    }
+    if (limit && attempt < attempts - 1 && fs.statSync(temp).size > limit) continue;
+    break;
+  }
+
+  running.delete(job.id);
+  try {
+    if (limit && fs.statSync(temp).size > limit) throw new JobError('TOO_LONG', Math.floor(total * 0.8));
+    fs.renameSync(temp, output);
+  } catch (e) {
+    safeUnlink(temp);
+    // Típico en Windows si el archivo a reemplazar está abierto en otro programa.
+    return e instanceof JobError ? fail(e.code, e.detail) : fail('OUTPUT_LOCKED', e.message);
+  }
+  let size = 0;
+  try { size = fs.statSync(output).size; } catch { /* sin tamaño */ }
+  onProgress({ id: job.id, percent: 100, eta: 0 });
+  return { ok: true, output, size };
+}
+
+// Ejecuta ffmpeg informando el progreso; resuelve { error } si termina mal.
+function runFfmpeg(args, entry, id, total, onProgress) {
   return new Promise((resolve) => {
+    // Cancelado entre un reintento y el siguiente: no se lanza otro proceso.
+    if (entry.canceled) return resolve({});
     const proc = run(args);
-    const entry = { proc, output, canceled: false };
-    running.set(job.id, entry);
+    entry.proc = proc;
 
     let stderr = '';
     let buffer = '';
@@ -153,38 +206,11 @@ async function convert(job, onProgress, { overwrite = false } = {}) {
       const percent = Math.min(99.5, (seconds / total) * 100);
       const speed = parseFloat(values.speed) || seconds / Math.max(0.001, (Date.now() - started) / 1000);
       const eta = speed > 0 ? Math.max(0, (total - seconds) / speed) : null;
-      onProgress({ id: job.id, percent, eta, speed });
+      onProgress({ id, percent, eta, speed });
     });
 
-    proc.on('error', (e) => {
-      running.delete(job.id);
-      safeUnlink(temp);
-      resolve(fail('FFMPEG', e.message));
-    });
-
-    proc.on('close', (code) => {
-      running.delete(job.id);
-      if (entry.canceled) {
-        safeUnlink(temp);
-        resolve({ ok: false, canceled: true });
-      } else if (code === 0) {
-        try {
-          fs.renameSync(temp, output);
-        } catch (e) {
-          // Típico en Windows si el archivo a reemplazar está abierto en otro programa.
-          safeUnlink(temp);
-          resolve(fail('OUTPUT_LOCKED', e.message));
-          return;
-        }
-        let size = 0;
-        try { size = fs.statSync(output).size; } catch { /* sin tamaño */ }
-        onProgress({ id: job.id, percent: 100, eta: 0 });
-        resolve({ ok: true, output, size });
-      } else {
-        safeUnlink(temp);
-        resolve(fail('FFMPEG', lastErrorLine(stderr)));
-      }
-    });
+    proc.on('error', (e) => resolve({ error: e.message }));
+    proc.on('close', (code) => resolve(code === 0 || entry.canceled ? {} : { error: lastErrorLine(stderr) }));
   });
 }
 
@@ -206,7 +232,7 @@ function cancel(id) {
   const entry = running.get(id);
   if (!entry) return false;
   entry.canceled = true;
-  entry.proc.kill('SIGKILL');
+  entry.proc?.kill('SIGKILL');
   return true;
 }
 

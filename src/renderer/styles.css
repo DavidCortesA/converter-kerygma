@@ -495,6 +495,160 @@ body.is-dragging .panel:not([hidden]) .dropzone { transform: scale(1.008); }
 .icon-btn.is-stop:hover { background: var(--danger-soft); color: var(--danger); }
 .icon-btn svg { width: 17px; height: 17px; }
 
+.icon-btn.is-on { background: var(--accent-soft); color: var(--accent); }
+
+.route.is-trim { color: var(--accent); }
+.route.is-trim svg { color: var(--accent); }
+
+/* ---------- Editor de recorte ---------- */
+
+.trim {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 16px;
+  margin-top: 4px;
+  padding: 14px;
+  border-radius: 12px;
+  background: var(--surface-2);
+  animation: item-in 0.25s var(--ease);
+}
+
+.trim-preview {
+  flex: none;
+  width: 192px;
+  aspect-ratio: 16 / 9;
+  border-radius: 9px;
+  background: #000;
+  overflow: hidden;
+}
+
+.trim-preview video { width: 100%; height: 100%; object-fit: contain; display: block; }
+.trim.is-audio .trim-preview,
+.trim.no-preview .trim-preview { display: none; }
+
+.trim-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Dos <input type="range"> superpuestos; la pista pinta el tramo elegido con --a y --b. */
+.trim-range {
+  position: relative;
+  height: 28px;
+  margin: 2px 7px 0;
+}
+
+.trim-track {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 8px;
+  margin-top: -4px;
+  border-radius: 4px;
+  background: linear-gradient(to right,
+    var(--surface-3) var(--a), var(--accent) var(--a),
+    var(--accent) var(--b), var(--surface-3) var(--b));
+}
+
+.trim-range input {
+  position: absolute;
+  inset: 0 -7px;
+  width: calc(100% + 14px);
+  height: 100%;
+  margin: 0;
+  background: none;
+  pointer-events: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.trim-range input::-webkit-slider-runnable-track { background: none; border: 0; }
+
+.trim-range input::-webkit-slider-thumb {
+  width: 14px;
+  height: 26px;
+  border: 2px solid var(--accent);
+  border-radius: 6px;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  cursor: ew-resize;
+  pointer-events: auto;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.trim-range input:focus-visible::-webkit-slider-thumb { outline: 2px solid var(--accent); outline-offset: 2px; }
+.trim-end { z-index: 1; }
+.trim-range.start-on-top .trim-start { z-index: 2; }
+
+.trim-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.trim-field {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-3);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.trim-field input {
+  width: 74px;
+  height: 30px;
+  padding: 0 8px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font: 500 13px/1 var(--font);
+  font-variant-numeric: tabular-nums;
+  user-select: text;
+}
+
+.trim-field input:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: transparent; }
+
+.trim-len { color: var(--text-2); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.trim-spacer { flex: 1; }
+
+.trim-row .btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 10px;
+}
+
+.trim-row .btn-ghost svg { width: 14px; height: 14px; }
+
+.btn-small {
+  height: 30px;
+  padding: 0 14px;
+  border-radius: 8px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.btn-small:hover { background: var(--accent-hover); }
+
+.trim-note { margin: 0; color: var(--text-3); font-size: 12px; line-height: 1.45; }
+
+.manual-only {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
 .item-progress {
   position: absolute;
   left: 0;

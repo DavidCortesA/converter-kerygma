@@ -28,7 +28,7 @@ const TABS = {
     fmtGroup: 'video',
     formats: ['mp4', 'mov', 'mkv', 'webm', 'avi', 'm4v', 'wmv', 'mpg', 'ts', 'flv', '3gp', 'gif']
       .map((id) => ({ id, label: id.toUpperCase() })),
-    defaults: { format: 'mp4', mode: 'fast', quality: 'alta', resolution: 'original', dest: 'same' },
+    defaults: { preset: 'custom', format: 'mp4', mode: 'fast', quality: 'alta', resolution: 'original', dest: 'same' },
   },
   audio: {
     needs: 'audio',
@@ -61,6 +61,7 @@ const TABS = {
 
 // Valores posibles de cada opción (sirven para pintar los botones y validar lo guardado).
 const OPTIONS = {
+  preset: ['custom', 'whatsapp', 'email', 'youtube', 'instagram'],
   mode: ['fast', 'compat'],
   quality: ['alta', 'media', 'baja'],
   resolution: ['original', '1080', '720', '480'],
@@ -75,6 +76,7 @@ const OPTIONS = {
 function optionLabel(setting, value) {
   if (value === 'original') return t('o.original');
   switch (setting) {
+    case 'preset': return { custom: t('o.preset.custom'), whatsapp: 'WhatsApp', email: t('o.preset.email'), youtube: 'YouTube', instagram: 'Instagram' }[value];
     case 'mode':
     case 'quality': return t(`o.${value}`);
     case 'resolution': return `${value}p`;
@@ -112,6 +114,8 @@ const ICON = {
   info: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.5m0-9v.01"/></svg>',
   github: '<svg viewBox="0 0 24 24"><path d="M9 19c-4.3 1.4-4.3-2.5-6-3m12 5v-3.5c0-1 .1-1.4-.5-2 2.8-.3 5.5-1.4 5.5-6a4.6 4.6 0 0 0-1.3-3.2 4.2 4.2 0 0 0-.1-3.2s-1.1-.3-3.5 1.3a12.3 12.3 0 0 0-6.2 0C6.5 2.8 5.4 3.1 5.4 3.1a4.2 4.2 0 0 0-.1 3.2A4.6 4.6 0 0 0 4 9.5c0 4.6 2.7 5.7 5.5 6-.6.6-.6 1.2-.5 2V21"/></svg>',
   reset: '<svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>',
+  scissors: '<svg viewBox="0 0 24 24"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4 8.1 15.9M14.5 14.5 20 20M8.1 8.1 12 12"/></svg>',
+  play: '<svg viewBox="0 0 24 24"><path d="M7 5.5v13a1 1 0 0 0 1.5.9l10.4-6.5a1 1 0 0 0 0-1.8L8.5 4.6A1 1 0 0 0 7 5.5z"/></svg>',
 };
 
 /* ---------- Estado ---------- */
@@ -174,12 +178,41 @@ function fmtEta(sec) {
   return `≈ ${Math.round(sec / 60)} min`;
 }
 
+// Tiempos del recorte: "m:ss", "h:mm:ss" o segundos sueltos, con décimas opcionales.
+function fmtTime(sec) {
+  const tenths = Math.round(sec * 10) / 10;
+  const whole = Math.floor(tenths);
+  const frac = tenths - whole >= 0.05 ? `.${Math.round((tenths - whole) * 10)}` : '';
+  return `${fmtDuration(whole) || '0:00'}${frac}`;
+}
+
+function parseTime(text) {
+  const parts = String(text).trim().replace(',', '.').split(':');
+  if (!parts.length || parts.length > 3 || parts.some((p) => p === '' || Number.isNaN(Number(p)))) return NaN;
+  return parts.reduce((acc, p) => acc * 60 + Number(p), 0);
+}
+
+// Recorte que de verdad cambia algo (null si abarca el archivo entero).
+function activeTrim(item) {
+  const tr = item.trim;
+  if (!tr || !item.duration) return null;
+  if (tr.start <= 0.05 && tr.end >= item.duration - 0.05) return null;
+  return tr;
+}
+
 // Los errores llegan como { code, detail } y se traducen al mostrarlos (cambian si cambia el idioma).
 function errorText(err) {
   if (!err) return t('e.FFMPEG_EMPTY');
   if (typeof err === 'string') return err;
   if (err.code === 'FFMPEG' && !err.detail) return t('e.FFMPEG_EMPTY');
+  if (err.code === 'TOO_LONG') return t('e.TOO_LONG', { max: fmtDuration(err.detail) });
   return t(`e.${err.code}`, { detail: err.detail ?? '' });
+}
+
+// Texto del destino en la lista: el formato, o "MP4 · WhatsApp" si hay un preset.
+function routeLabel(key, settings) {
+  if (key === 'video' && settings.preset && settings.preset !== 'custom') return `MP4 · ${optionLabel('preset', settings.preset)}`;
+  return settings.format.toUpperCase();
 }
 
 const isConvertible = (item) => ['pending', 'canceled', 'error'].includes(item.status);
@@ -236,7 +269,16 @@ function settingsTemplate(key, cfg) {
       ${ICON.folder}<span class="folder-path"></span>
     </button>`);
 
-  return formatGroup + ({ video: videoGroups, image: imageGroups }[key] ?? audioGroups) + destGroup;
+  if (key === 'video') {
+    // Con un destino elegido, formato, modo, calidad y resolución los decide el preset.
+    const presetGroup = group(t('g.preset'), `
+      <div class="chips cols-3 is-compact" data-setting="preset" role="radiogroup">
+        ${OPTIONS.preset.map((v) => `<button type="button" class="chip" role="radio" data-value="${v}"><strong>${esc(optionLabel('preset', v))}</strong></button>`).join('')}
+      </div>
+      <p class="group-hint" data-hint="preset"></p>`);
+    return `${presetGroup}<div class="manual-only">${formatGroup}${videoGroups}</div>${destGroup}`;
+  }
+  return formatGroup + (key === 'image' ? imageGroups : audioGroups) + destGroup;
 }
 
 function panelTemplate(key) {
@@ -295,21 +337,66 @@ function statusTemplate(item) {
   }
 }
 
-function itemTemplate(key, item) {
+const canTrim = (key, item) => key !== 'image' && item.duration > 0 && isConvertible(item);
+
+// Editor de recorte: vista previa, barra con dos controles, campos de tiempo y acciones.
+function trimTemplate(key, item) {
   const st = state.tabs[key];
-  const target = (item.status === 'done' || item.status === 'running' || item.status === 'queued' ? item.target : st.settings.format) || '';
-  let meta;
+  const dur = item.duration;
+  const tr = item.trim || { start: 0, end: dur };
+  const pct = (s) => `${((s / dur) * 100).toFixed(3)}%`;
+  const media = key === 'audio' ? 'audio' : 'video';
+  const fastNote = key === 'video' && st.settings.preset === 'custom' && st.settings.mode === 'fast' && st.settings.format !== 'gif';
+  return `
+    <div class="trim${key === 'audio' ? ' is-audio' : ''}">
+      <div class="trim-preview">
+        <${media} src="${esc(item.url || '')}" preload="metadata" muted playsinline></${media}>
+      </div>
+      <div class="trim-body">
+        <div class="trim-range" style="--a:${pct(tr.start)};--b:${pct(tr.end)}">
+          <div class="trim-track"></div>
+          <input type="range" class="trim-start" min="0" max="${dur}" step="0.1" value="${tr.start}" aria-label="${t('trim.start')}">
+          <input type="range" class="trim-end" min="0" max="${dur}" step="0.1" value="${tr.end}" aria-label="${t('trim.end')}">
+        </div>
+        <div class="trim-row">
+          <label class="trim-field"><span>${t('trim.start')}</span><input type="text" class="trim-in" value="${fmtTime(tr.start)}" spellcheck="false"></label>
+          <label class="trim-field"><span>${t('trim.end')}</span><input type="text" class="trim-out" value="${fmtTime(tr.end)}" spellcheck="false"></label>
+          <span class="trim-len">${t('trim.length', { d: fmtTime(tr.end - tr.start) })}</span>
+          <span class="trim-spacer"></span>
+          <button type="button" class="btn-ghost" data-act="trim-play">${ICON.play}<span>${t('trim.play')}</span></button>
+          <button type="button" class="btn-ghost" data-act="trim-reset">${t('trim.reset')}</button>
+          <button type="button" class="btn-small" data-act="trim-done">${t('trim.done')}</button>
+        </div>
+        <p class="trim-note" data-note="preview" hidden>${t('trim.noPreview')}</p>
+        ${fastNote ? `<p class="trim-note">${t('trim.fast')}</p>` : ''}
+      </div>
+    </div>`;
+}
+
+function itemMeta(key, item) {
   if (item.status === 'invalid' || item.status === 'error') {
-    meta = `<span class="item-error">${esc(errorText(item.error))}</span>`;
-  } else if (item.status === 'done') {
-    meta = `<span>${t('q.savedAs')} <b>${esc(nameOf(item.output))}</b></span><span>${fmtSize(item.outputSize)}</span>`;
-  } else {
-    meta = [fmtSize(item.size), fmtDuration(item.duration), item.resolution]
-      .filter(Boolean).map((m) => `<span>${esc(m)}</span>`).join('')
-      + `<span class="route">${esc(item.ext.toUpperCase())}${ICON.arrow}${esc(target.toUpperCase())}</span>`;
+    return `<span class="item-error">${esc(errorText(item.error))}</span>`;
   }
+  if (item.status === 'done') {
+    return `<span>${t('q.savedAs')} <b>${esc(nameOf(item.output))}</b></span><span>${fmtSize(item.outputSize)}</span>`;
+  }
+  const busy = item.status === 'running' || item.status === 'queued';
+  const target = (busy ? item.targetLabel : routeLabel(key, state.tabs[key].settings)) || '';
+  const trim = activeTrim(item);
+  return [fmtSize(item.size), fmtDuration(item.duration), item.resolution]
+    .filter(Boolean).map((m) => `<span>${esc(m)}</span>`).join('')
+    + (trim ? `<span class="route is-trim">${ICON.scissors}${fmtTime(trim.start)}–${fmtTime(trim.end)}</span>` : '')
+    + `<span class="route">${esc(item.ext.toUpperCase())}${ICON.arrow}${esc(target)}</span>`;
+}
+
+function itemTemplate(key, item) {
+  const trim = activeTrim(item);
+  const meta = itemMeta(key, item);
 
   const actions = [];
+  if (canTrim(key, item)) {
+    actions.push(`<button type="button" class="icon-btn${item.trimOpen || trim ? ' is-on' : ''}" data-act="trim" title="${t('trim.open')}" aria-expanded="${!!item.trimOpen}">${ICON.scissors}</button>`);
+  }
   if (item.status === 'done') {
     actions.push(`<button type="button" class="icon-btn" data-act="reveal" title="${t('q.reveal')}">${ICON.folder}</button>`);
   }
@@ -330,6 +417,7 @@ function itemTemplate(key, item) {
     </div>
     <div class="item-status">${statusTemplate(item)}</div>
     <div class="item-actions">${actions.join('')}</div>
+    ${item.trimOpen && canTrim(key, item) ? trimTemplate(key, item) : ''}
     <div class="item-progress"><span style="width:${item.status === 'done' ? 100 : item.progress || 0}%"></span></div>
   </li>`;
 }
@@ -367,6 +455,8 @@ function renderSettings(key) {
   };
 
   if (key === 'video') {
+    $('.manual-only', root).hidden = s.preset !== 'custom';
+    $('[data-hint="preset"]', root).textContent = t(`preset.${s.preset}`);
     const gif = s.format === 'gif';
     disable('mode', gif);
     $('[data-hint="mode"]', root).textContent = gif ? t('h.gifMode')
@@ -403,6 +493,8 @@ function renderQueue(key) {
   $('.queue-tools', root).hidden = !has;
   $('.queue-count', root).textContent = t('q.count', { n: st.items.length });
   $('[data-act="clear"]', root).disabled = st.running;
+  // Un <video> fuera del documento seguiría sonando: se pausan antes de reemplazar la lista.
+  $$('.trim-preview video, .trim-preview audio', root).forEach((m) => m.pause());
   $('.queue', root).innerHTML = st.items.map((item) => itemTemplate(key, item)).join('');
 }
 
@@ -616,7 +708,7 @@ async function startQueue(key) {
   st.stopRequested = false;
   st.batch = { total: targets.length, finished: 0, done: 0, failed: 0, lastOutput: null };
   for (const item of targets) {
-    Object.assign(item, { status: 'queued', progress: 0, eta: null, error: null, target: settings.format });
+    Object.assign(item, { status: 'queued', progress: 0, eta: null, error: null, trimOpen: false, targetLabel: routeLabel(key, settings) });
   }
   refresh(key);
 
@@ -631,7 +723,11 @@ async function startQueue(key) {
     st.current = item;
     refresh(key);
 
-    const res = await api.convert({ id: item.id, kind: key, input: item.path, outputDir, ...settings });
+    const trim = activeTrim(item);
+    const res = await api.convert({
+      id: item.id, kind: key, input: item.path, outputDir, ...settings,
+      trim: trim ? { start: trim.start, end: trim.end } : undefined,
+    });
 
     st.current = null;
     st.batch.finished++;
@@ -882,7 +978,135 @@ function onPanelClick(e) {
       break;
     case 'cancel': api.cancel(item.id); break;
     case 'reveal': api.reveal(item.output); break;
+    case 'trim':
+      item.trimOpen = !item.trimOpen;
+      refresh(key);
+      break;
+    case 'trim-play': togglePreview(btn.closest('.item'), item); break;
+    case 'trim-reset':
+      item.trim = null;
+      refresh(key);
+      break;
+    case 'trim-done':
+      item.trimOpen = false;
+      refresh(key);
+      break;
   }
+}
+
+/* ---------- Recorte ---------- */
+
+function trimContext(el) {
+  const li = el.closest('.item');
+  const key = el.closest('.panel')?.dataset.panel;
+  const item = key && li && state.tabs[key].items.find((i) => i.id === li.dataset.id);
+  return item ? { key, item, li } : null;
+}
+
+const previewOf = (li) => $('.trim-preview video, .trim-preview audio', li);
+
+// Aplica un tramo nuevo y actualiza el editor sin redibujarlo, para no cortar el arrastre.
+// moved indica qué extremo cambió, para mostrar ese fotograma en la vista previa.
+function setTrim({ key, item, li }, start, end, moved) {
+  const dur = item.duration;
+  start = Math.max(0, Math.min(start, dur - 0.1));
+  end = Math.max(start + 0.1, Math.min(end, dur));
+  item.trim = { start, end };
+
+  const range = $('.trim-range', li);
+  range.style.setProperty('--a', `${(start / dur) * 100}%`);
+  range.style.setProperty('--b', `${(end / dur) * 100}%`);
+  // Si los dos controles se juntan al final, el de inicio debe quedar encima para poder moverlo.
+  range.classList.toggle('start-on-top', start > dur * 0.9);
+  $('.trim-start', li).value = start;
+  $('.trim-end', li).value = end;
+  for (const [sel, value] of [['.trim-in', start], ['.trim-out', end]]) {
+    const input = $(sel, li);
+    if (document.activeElement !== input) input.value = fmtTime(value);
+  }
+  $('.trim-len', li).textContent = t('trim.length', { d: fmtTime(end - start) });
+  $('.item-meta', li).innerHTML = itemMeta(key, item);
+
+  const media = previewOf(li);
+  if (media && moved && media.readyState >= 1) {
+    stopPreview(li);
+    media.currentTime = moved === 'end' ? end : start;
+  }
+}
+
+function stopPreview(li) {
+  const media = previewOf(li);
+  if (!media) return;
+  media.pause();
+  media.muted = true;
+  media.onTimeupdate?.();
+  const label = $('[data-act="trim-play"] span', li);
+  if (label) label.textContent = t('trim.play');
+}
+
+// Reproduce solo el tramo elegido y se detiene al llegar al fin.
+function togglePreview(li, item) {
+  const media = previewOf(li);
+  if (!media || li.querySelector('.trim.no-preview')) return;
+  if (!media.paused) {
+    stopPreview(li);
+    return;
+  }
+  const { start, end } = item.trim || { start: 0, end: item.duration };
+  const onTime = () => { if (media.currentTime >= end) stopPreview(li); };
+  media.addEventListener('timeupdate', onTime);
+  media.onTimeupdate = () => { media.removeEventListener('timeupdate', onTime); media.onTimeupdate = null; };
+  media.currentTime = start;
+  media.muted = false;
+  media.play().catch(() => markNoPreview(li));
+  $('[data-act="trim-play"] span', li).textContent = t('trim.stop');
+}
+
+function markNoPreview(li) {
+  const trim = $('.trim', li);
+  if (!trim) return;
+  trim.classList.add('no-preview');
+  $('[data-note="preview"]', li).hidden = false;
+}
+
+function bindTrim() {
+  const view = $('#view');
+
+  view.addEventListener('input', (e) => {
+    if (!e.target.matches('.trim-start, .trim-end')) return;
+    const ctx = trimContext(e.target);
+    if (!ctx) return;
+    const cur = ctx.item.trim || { start: 0, end: ctx.item.duration };
+    const v = Number(e.target.value);
+    if (e.target.classList.contains('trim-start')) setTrim(ctx, Math.min(v, cur.end - 0.1), cur.end, 'start');
+    else setTrim(ctx, cur.start, Math.max(v, cur.start + 0.1), 'end');
+  });
+
+  view.addEventListener('change', (e) => {
+    if (!e.target.matches('.trim-in, .trim-out')) return;
+    const ctx = trimContext(e.target);
+    if (!ctx) return;
+    const cur = ctx.item.trim || { start: 0, end: ctx.item.duration };
+    const isStart = e.target.classList.contains('trim-in');
+    const v = parseTime(e.target.value);
+    if (!Number.isNaN(v)) {
+      if (isStart) setTrim(ctx, Math.min(v, cur.end - 0.1), cur.end, 'start');
+      else setTrim(ctx, cur.start, Math.max(v, cur.start + 0.1), 'end');
+    }
+    const tr = ctx.item.trim || cur;
+    e.target.value = fmtTime(isStart ? tr.start : tr.end);
+  });
+
+  // Eventos de <video>/<audio> (no burbujean, por eso se escuchan en captura).
+  view.addEventListener('error', (e) => {
+    if (e.target.matches?.('.trim-preview video, .trim-preview audio')) markNoPreview(e.target.closest('.item'));
+  }, true);
+  view.addEventListener('loadedmetadata', (e) => {
+    if (!e.target.matches?.('.trim-preview video, .trim-preview audio')) return;
+    const ctx = trimContext(e.target);
+    // Muestra el fotograma del inicio del tramo (0.01 evita el cuadro negro de algunos MP4).
+    if (ctx) e.target.currentTime = ctx.item.trim?.start || 0.01;
+  }, true);
 }
 
 function bindDragAndDrop() {
@@ -950,6 +1174,7 @@ async function init() {
   buildView();
 
   $('#view').addEventListener('click', onPanelClick);
+  bindTrim();
   $('#prefs').addEventListener('click', onPrefsClick);
   $('[data-act="open-prefs"]').addEventListener('click', openPrefs);
   for (const tab of $$('.tab')) tab.addEventListener('click', () => setTab(tab.dataset.tab));
