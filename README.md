@@ -1,6 +1,17 @@
-# Kerygma Converter
+<p align="center">
+  <img src="build/icon-mac.png" alt="Logo de Kerygma Converter" width="128" height="128">
+</p>
 
-Convertidor de video, audio y fotos de escritorio para **Mac y Windows**. Funciona 100 % offline: ffmpeg viene incluido dentro de la app y tus archivos nunca salen de tu equipo.
+<h1 align="center">Kerygma Converter</h1>
+
+<p align="center">
+  Convertidor de video, audio y fotos de escritorio para <b>Mac y Windows</b>.<br>
+  Funciona 100 % offline: ffmpeg viene incluido dentro de la app y tus archivos nunca salen de tu equipo.
+</p>
+
+<p align="center">
+  <a href="https://github.com/DavidCortesA/converter-kerygma/releases/latest"><b>Descargar la última versión</b></a>
+</p>
 
 ![Kerygma Converter convirtiendo videos](docs/screenshots/dark-video.png)
 
