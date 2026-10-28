@@ -37,6 +37,18 @@ La app sigue el tema claro u oscuro del sistema:
 | ![Pestaña Video en tema claro](docs/screenshots/light-video.png) | ![Pestaña Audio en tema claro](docs/screenshots/light-audio.png) |
 | ![Pestaña Foto en tema claro](docs/screenshots/light-foto.png) | ![Pantalla inicial sin archivos](docs/screenshots/dark-vacio.png) |
 
+### En Mac
+
+En macOS la ventana usa los botones nativos de la Mac (cerrar, minimizar y ampliar) integrados en la barra superior.
+
+| Convirtiendo video | Audio |
+|---|---|
+| ![Pestaña Video convirtiendo en Mac](docs/screenshots/mac-video.png) | ![Pestaña Audio en Mac](docs/screenshots/mac-audio.png) |
+| **Foto** | **Tema claro** |
+| ![Pestaña Foto en Mac](docs/screenshots/mac-foto.png) | ![Pestaña Video en tema claro en Mac](docs/screenshots/mac-claro.png) |
+| **Configuración** | |
+| ![Configuración en Mac](docs/screenshots/mac-config.png) | |
+
 ## Recortar ✂
 
 En las pestañas **Video**, **Audio** y **Video → Audio**, el botón de tijeras de cada archivo abre el editor de recorte:
@@ -148,9 +160,29 @@ El workflow de [`.github/workflows/build.yml`](.github/workflows/build.yml) comp
 
 El ícono se genera desde el logo: `build/icon.png` (Windows) y `build/icon-mac.png` (Mac, con el margen de los íconos de macOS).
 
-> **Mac:** la app no está firmada con un certificado de Apple, así que la primera vez hay que abrirla con clic derecho → **Abrir**.
+> **Mac:** la app no está firmada con un certificado de Apple; mira [Instalar en Mac](#instalar-en-mac) para abrirla la primera vez.
 >
 > **Windows:** tampoco está firmada, así que SmartScreen puede mostrar "Windows protegió su PC": haz clic en **Más información → Ejecutar de todas formas**.
+
+### Instalar en Mac
+
+1. Abre el `.dmg` y arrastra **Kerygma Converter** a la carpeta **Applications** (Aplicaciones).
+
+   <img src="docs/screenshots/mac-dmg.png" alt="Ventana del .dmg: arrastra Kerygma Converter a Applications" width="540">
+
+2. Abre la app desde Aplicaciones. Como no está notarizada por Apple, la primera vez macOS dice que *no pudo verificar* que no contenga software malicioso: cierra ese aviso (no la mandes a la papelera).
+3. Ve a **Configuración del Sistema → Privacidad y seguridad**, baja hasta **Seguridad** y haz clic en **Abrir de todos modos** junto a "Se bloqueó Kerygma Converter". Confirma con tu contraseña o Touch ID.
+
+   <img src="docs/screenshots/mac-seguridad.png" alt="Privacidad y seguridad con el botón Abrir de todos modos" width="580">
+
+   - En macOS 14 o anterior basta con clic derecho sobre la app → **Abrir** → **Abrir**.
+4. Si macOS dice que la app **está dañada**, quítale la marca de descarga en la Terminal y ábrela de nuevo:
+
+   ```bash
+   xattr -cr "/Applications/Kerygma Converter.app"
+   ```
+
+Solo hace falta la primera vez; después se abre normal.
 
 ### Instalador de Windows
 
